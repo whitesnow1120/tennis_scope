@@ -912,6 +912,21 @@ p {
   background-color: #D54E46;
 }
 
+.loading {
+  position: fixed;
+  z-index: 9999;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.loading .loader {
+  height: 100%;
+  width: 100%;
+  top: 41%;
+  position: relative;
+}
+
 .inplay .match-item .match-detail .match-sets-score-1 {
   width: 100%;
 }

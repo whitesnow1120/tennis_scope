@@ -1,23 +1,24 @@
 import {
+  GET_OPENED_DETAIL,
   GET_HISTORY_DATA,
   GET_HISTORY_DATE,
   GET_UPCOMING_DATA,
   GET_RELATION_DATA,
-  GET_RELATION_SET_NUMBER,
-  GET_RELATION_BREAKS,
-  GET_RELATION_ENABLE_OPPONENT_IDS,
+  GET_RELATION_FILTERED_DATA,
   GET_INPLAY_DATA,
   GET_ACCOUNT_INFO,
 } from '../actions/types';
 
 const initialState = {
+  openedDetail: {
+    p1_id: '',
+    p2_id: '',
+  },
   historyData: [],
   upcomingData: [],
   inplayData: [],
   relationData: {},
-  setNumber: {},
-  breaks: {},
-  enableOpponentIds: {},
+  filteredRelationData: {},
   historyDate: new Date(),
   accountInfo: {
     name: 'Andrejs',
@@ -34,6 +35,8 @@ const initialState = {
 const reducer = (state = initialState, action) => {
   const { type, payload } = action;
   switch (type) {
+    case GET_OPENED_DETAIL:
+      return { ...state, openedDetail: payload };
     case GET_HISTORY_DATA:
       return { ...state, historyData: payload };
     case GET_UPCOMING_DATA:
@@ -42,12 +45,8 @@ const reducer = (state = initialState, action) => {
       return { ...state, inplayData: payload };
     case GET_RELATION_DATA:
       return { ...state, relationData: payload };
-    case GET_RELATION_SET_NUMBER:
-      return { ...state, setNumber: payload };
-    case GET_RELATION_BREAKS:
-      return { ...state, breaks: payload };
-    case GET_RELATION_ENABLE_OPPONENT_IDS:
-      return { ...state, enableOpponentIds: payload };
+    case GET_RELATION_FILTERED_DATA:
+      return { ...state, filteredRelationData: payload };
     case GET_HISTORY_DATE:
       return { ...state, historyDate: payload };
     case GET_ACCOUNT_INFO:

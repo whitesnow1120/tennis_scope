@@ -3,8 +3,8 @@ import { useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 
 const SetPercent = (props) => {
-  const { relationData, player_id } = props;
-  const { enableOpponentIds } = useSelector((state) => state.tennis);
+  const { player_id } = props;
+  const { filteredRelationData } = useSelector((state) => state.tennis);
 
   const [wwCount, setWWCount] = useState(0);
   const [wlCount, setWLCount] = useState(0);
@@ -17,34 +17,19 @@ const SetPercent = (props) => {
   const [llPercent, setLLPercent] = useState(0);
 
   useEffect(() => {
-    if (relationData != undefined && player_id in relationData) {
-      let ww = 0;
-      let wl = 0;
-      let lw = 0;
-      let ll = 0;
-
-      relationData[player_id].map((data) => {
-        let opponentId =
-          data['player1_id'] === player_id
-            ? data['player2_id']
-            : data['player1_id'];
-        if (
-          enableOpponentIds != undefined &&
-          enableOpponentIds[player_id] != undefined &&
-          enableOpponentIds[player_id].includes(opponentId.toString())
-        ) {
-          ww += data.performance.ww;
-          wl += data.performance.wl;
-          lw += data.performance.lw;
-          ll += data.performance.ll;
-        }
-      });
-
+    if (
+      filteredRelationData != undefined &&
+      'performance' in filteredRelationData &&
+      player_id in filteredRelationData['performance']
+    ) {
+      const ww = filteredRelationData['performance'][player_id]['pWW'];
+      const wl = filteredRelationData['performance'][player_id]['pWL'];
+      const lw = filteredRelationData['performance'][player_id]['pLW'];
+      const ll = filteredRelationData['performance'][player_id]['pLL'];
       setWWCount(ww);
       setWLCount(wl);
       setLWCount(lw);
       setLLCount(ll);
-
       const total = ww + wl + lw + ll;
       if (total == 0) {
         setWWPercent(0);
@@ -58,7 +43,7 @@ const SetPercent = (props) => {
         setLLPercent(Math.round((ll / total) * 100));
       }
     }
-  }, [relationData, enableOpponentIds]);
+  }, [filteredRelationData]);
 
   return (
     <>
@@ -91,7 +76,6 @@ const SetPercent = (props) => {
 };
 
 SetPercent.propTypes = {
-  relationData: PropTypes.any,
   player_id: PropTypes.number,
 };
 

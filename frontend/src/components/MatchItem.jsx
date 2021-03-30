@@ -5,10 +5,10 @@ import PropTypes from 'prop-types';
 import { getRelationData } from '../apis';
 import {
   GET_RELATION_DATA,
-  GET_RELATION_SET_NUMBER,
-  GET_RELATION_BREAKS,
+  GET_RELATION_FILTERED_DATA,
+  GET_OPENED_DETAIL,
 } from '../store/actions/types';
-import { getWinner, formateDateTime } from '../utils';
+import { getWinner, formateDateTime, filterData } from '../utils';
 import Surface from './InplayDetail/Surface';
 import Set from './InplayDetail/Set';
 import FilterRank from './InplayDetail/FilterRank';
@@ -18,9 +18,9 @@ import FilterLimit from './InplayDetail/FilterLimit';
 import PlayerDetail from './InplayDetail/PlayerDetail';
 
 const MatchItem = (props) => {
-  const { item, type } = props;
+  const { item, type, setLoading } = props;
   const dispatch = useDispatch();
-  const { relationData } = useSelector((state) => state.tennis);
+  const { relationData, openedDetail } = useSelector((state) => state.tennis);
 
   const [detailOpened, setDetailOpened] = useState(false);
   const [selectedSurface, setSelectedSurface] = useState('ALL');
@@ -39,71 +39,106 @@ const MatchItem = (props) => {
 
   useEffect(() => {
     const loadRelationData = async () => {
-      const params = {
-        player1_id: item.player1_id,
-        player2_id: item.player2_id,
+      setLoading(true);
+      let filteredData = {};
+      if (
+        !(
+          relationData != undefined &&
+          item.player1_id in relationData &&
+          item.player1_id in relationData
+        )
+      ) {
+        const params = {
+          player1_id: item.player1_id,
+          player2_id: item.player2_id,
+        };
+
+        const response = await getRelationData(params);
+
+        if (response.status === 200) {
+          filteredData = response.data;
+          dispatch({
+            type: GET_RELATION_DATA,
+            payload: filteredData,
+          });
+        } else {
+          dispatch({ type: GET_RELATION_DATA, payload: {} });
+        }
+      } else {
+        filteredData = relationData;
+      }
+      // filtering
+      const filters = {
         surface: selectedSurface,
-        rank_diff_1: selectedRankDiff1,
-        rank_diff_2: selectedRankDiff2,
         opponent: selectedOpponent,
+        rankDiff1: selectedRankDiff1,
+        rankDiff2: selectedRankDiff2,
+        breakDiff1: selectedBreakDiff1,
+        breakDiff2: selectedBreakDiff2,
+        set1: selectedSet1,
+        set2: selectedSet2,
         limit: selectedLimit,
       };
-
-      const response = await getRelationData(params);
-
-      if (response.status === 200) {
-        dispatch({
-          type: GET_RELATION_DATA,
-          payload: response.data,
-        });
-      } else {
-        dispatch({ type: GET_RELATION_DATA, payload: [] });
-      }
+      const data = filterData(
+        item.player1_id,
+        item.player2_id,
+        filteredData,
+        filters
+      );
+      dispatch({
+        type: GET_RELATION_FILTERED_DATA,
+        payload: data,
+      });
+      setLoading(false);
     };
-
-    if (detailOpened) {
+    if (
+      (openedDetail != undefined &&
+        openedDetail['p1_id'] === item.player1_id &&
+        openedDetail['p2_id'] === item.player2_id) ||
+      (openedDetail['p1_id'] === item.player2_id &&
+        openedDetail['p2_id'] === item.player1_id)
+    ) {
       loadRelationData();
+      setDetailOpened(true);
+    } else {
+      setDetailOpened(false);
     }
   }, [
-    detailOpened,
+    openedDetail,
     selectedSurface,
+    selectedOpponent,
     selectedRankDiff1,
     selectedRankDiff2,
-    selectedOpponent,
+    selectedBreakDiff1,
+    selectedBreakDiff2,
+    selectedSet1,
+    selectedSet2,
     selectedLimit,
   ]);
 
-  useEffect(() => {
-    if (detailOpened) {
-      let setPayload = {};
-      setPayload[item.player1_id] = selectedSet1;
-      setPayload[item.player2_id] = selectedSet2;
-      dispatch({
-        type: GET_RELATION_SET_NUMBER,
-        payload: setPayload,
-      });
-
-      let breakPayload = {};
-      breakPayload[item.player1_id] = selectedBreakDiff1;
-      breakPayload[item.player2_id] = selectedBreakDiff2;
-      dispatch({
-        type: GET_RELATION_BREAKS,
-        payload: breakPayload,
-      });
-    }
-  }, [
-    selectedSet1,
-    selectedSet2,
-    selectedBreakDiff1,
-    selectedBreakDiff2,
-    relationData,
-  ]);
-
   const handleMatchClicked = () => {
-    const pathName = window.location.pathname;
-    if (!(pathName.includes('/upcoming') || pathName.includes('/history') )) {
-      setDetailOpened(!detailOpened);
+    let data = {};
+    if (
+      (openedDetail != undefined &&
+        openedDetail['p1_id'] === item.player1_id &&
+        openedDetail['p2_id'] === item.player2_id) ||
+      (openedDetail['p1_id'] === item.player2_id &&
+        openedDetail['p2_id'] === item.player1_id)
+    ) {
+      data = {
+        p1_id: '',
+        p2_id: '',
+      };
+    } else {
+      data = {
+        p1_id: item.player1_id,
+        p2_id: item.player2_id,
+      };
     }
+    dispatch({
+      type: GET_OPENED_DETAIL,
+      payload: data,
+    });
   };
 
   return (
@@ -268,6 +303,7 @@ const MatchItem = (props) => {
 MatchItem.propTypes = {
   item: PropTypes.object,
   type: PropTypes.string,
+  setLoading: PropTypes.func,
 };
 
 export default MatchItem;
