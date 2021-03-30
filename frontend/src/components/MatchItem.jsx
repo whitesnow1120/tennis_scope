@@ -18,7 +18,7 @@ import FilterLimit from './InplayDetail/FilterLimit';
 import PlayerDetail from './InplayDetail/PlayerDetail';
 
 const MatchItem = (props) => {
-  const { item, type, setLoading } = props;
+  const { item, type, loading, setLoading } = props;
   const dispatch = useDispatch();
   const { relationData, openedDetail } = useSelector((state) => state.tennis);
 
@@ -222,7 +222,7 @@ const MatchItem = (props) => {
             </div>
           </div>
         </div>
-        {detailOpened && (
+        {!loading && detailOpened && (
           <div className="players-detail">
             <Surface
               setSelectedSurface={setSelectedSurface}
@@ -303,6 +303,7 @@ const MatchItem = (props) => {
 MatchItem.propTypes = {
   item: PropTypes.object,
   type: PropTypes.string,
+  loading: PropTypes.bool,
   setLoading: PropTypes.func,
 };
 

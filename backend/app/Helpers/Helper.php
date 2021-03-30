@@ -207,7 +207,7 @@ class Helper {
 		$sets = array();
 		$i = 0;
 		foreach ($matches as $match) {
-			if ($match["detail"] != "") {
+			if ($match["detail"] != "" && $match["scores"] != "" && $match["scores"] != "0-0" && $match["scores"] != "0-0,") {
 				$sets[$i] = $match;
 				$details = Helper::getCorrectDetail($match["detail"]);
 				$total_details_count = count($details);
@@ -527,7 +527,7 @@ class Helper {
 			];
 			DB::table($bucket_opponents_table)
 				->updateOrInsert(
-					["event_id" => $opponent_info["event_id"]],
+					["event_id" => $data["event_id"]],
 					$db_data
 				);
 		}
@@ -569,140 +569,144 @@ class Helper {
         $matches_2 = array();
 
         foreach ($matches1_set as $data) {
-			$brw = array();
-			$brl = array();
-			$gah = array();
-			$depths = array();
-			$ww = array();
-			$wl = array();
-			$lw = array();
-			$ll = array();
-            // by sets
-            for ($i = 0; $i < 5; $i ++) {
-                if (count($data["sets"]) > $i) {
-					array_push($brw, $data["sets"][$i]["brw"]);
-					array_push($brl, $data["sets"][$i]["brl"]);
-					array_push($gah, $data["sets"][$i]["gah"]);
-					array_push($depths, $data["sets"][$i]["depth"]);
-					array_push($ww, $data["sets"][$i]["performance"]["ww"]);
-					array_push($wl, $data["sets"][$i]["performance"]["wl"]);
-					array_push($lw, $data["sets"][$i]["performance"]["lw"]);
-					array_push($ll, $data["sets"][$i]["performance"]["ll"]);
-                }
-            }
-			// insert $data to t_buckets table
-			$p_ranking = $data["player1_id"] == $player1_id ? $data["player1_ranking"] : $data["player2_ranking"];
-			$p_ranking = $p_ranking == "-" ? NULL : $p_ranking;
-			$player_info = [
-				"p_id" =>  $player1_id,
-				"p_name" => $data["player1_id"] == $player1_id ? $data["player1_name"] : $data["player2_name"],
-				"p_odd" => $data["player1_id"] == $player1_id ? $data["player1_odd"] : $data["player2_odd"],
-				"p_ranking" => $p_ranking,
-			];
-			$opponent_info = [
-				"o_id" => $data["player1_id"] == $player1_id ? $data["player2_id"] : $data["player1_id"],
-				"o_name" => $data["player1_id"] == $player1_id ? $data["player2_name"] : $data["player1_name"],
-				"o_odd" => $data["player1_id"] == $player1_id ? $data["player2_odd"] : $data["player1_odd"],
-				"o_ranking" => $data["player1_id"] == $player1_id ? $data["player2_ranking"] : $data["player1_ranking"],
-				"surface" => $data["surface"],
-				"event_id" => $data["event_id"],
-			];
-			$db_data = [
-				"event_id"  => $data["event_id"],
-				"p_id"    	=> $player_info["p_id"],
-				"p_name"  	=> $player_info["p_name"],
-				"p_odd"   	=> $player_info["p_odd"],
-				"p_ranking" => $player_info["p_ranking"],
-				"p_brw"		=> json_encode($brw),
-				"p_brl"		=> json_encode($brl),
-				"p_gah"		=> json_encode($gah),
-				"p_depths"	=> json_encode($depths),
-				"p_ww"		=> json_encode($ww),
-				"p_wl"		=> json_encode($wl),
-				"p_lw"		=> json_encode($lw),
-				"p_ll"		=> json_encode($ll),
-				"scores"    => $data["scores"],
-				"surface"   => $data["surface"],
-				"time"      => $data["time"],
-				"detail"	=> $data["detail"],
-				"o_id"		=> $opponent_info["o_id"],
-				"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
-			];
-			DB::table($bucket_players_table)
-				->updateOrInsert(
-					["event_id" => $data["event_id"]],
-					$db_data
-				);
-			Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player1_id);
+			if ($data["scores"] != "" && $data["scores"] != "0-0" && $data["scores"] != "0-0,") {
+				$brw = array();
+				$brl = array();
+				$gah = array();
+				$depths = array();
+				$ww = array();
+				$wl = array();
+				$lw = array();
+				$ll = array();
+				// by sets
+				for ($i = 0; $i < 5; $i ++) {
+					if (count($data["sets"]) > $i) {
+						array_push($brw, $data["sets"][$i]["brw"]);
+						array_push($brl, $data["sets"][$i]["brl"]);
+						array_push($gah, $data["sets"][$i]["gah"]);
+						array_push($depths, $data["sets"][$i]["depth"]);
+						array_push($ww, $data["sets"][$i]["performance"]["ww"]);
+						array_push($wl, $data["sets"][$i]["performance"]["wl"]);
+						array_push($lw, $data["sets"][$i]["performance"]["lw"]);
+						array_push($ll, $data["sets"][$i]["performance"]["ll"]);
+					}
+				}
+				// insert $data to t_buckets table
+				$p_ranking = $data["player1_id"] == $player1_id ? $data["player1_ranking"] : $data["player2_ranking"];
+				$p_ranking = $p_ranking == "-" ? NULL : $p_ranking;
+				$player_info = [
+					"p_id" =>  $player1_id,
+					"p_name" => $data["player1_id"] == $player1_id ? $data["player1_name"] : $data["player2_name"],
+					"p_odd" => $data["player1_id"] == $player1_id ? $data["player1_odd"] : $data["player2_odd"],
+					"p_ranking" => $p_ranking,
+				];
+				$opponent_info = [
+					"o_id" => $data["player1_id"] == $player1_id ? $data["player2_id"] : $data["player1_id"],
+					"o_name" => $data["player1_id"] == $player1_id ? $data["player2_name"] : $data["player1_name"],
+					"o_odd" => $data["player1_id"] == $player1_id ? $data["player2_odd"] : $data["player1_odd"],
+					"o_ranking" => $data["player1_id"] == $player1_id ? $data["player2_ranking"] : $data["player1_ranking"],
+					"surface" => $data["surface"],
+					"event_id" => $data["event_id"],
+				];
+				$db_data = [
+					"event_id"  => $data["event_id"],
+					"p_id"    	=> $player_info["p_id"],
+					"p_name"  	=> $player_info["p_name"],
+					"p_odd"   	=> $player_info["p_odd"],
+					"p_ranking" => $player_info["p_ranking"],
+					"p_brw"		=> json_encode($brw),
+					"p_brl"		=> json_encode($brl),
+					"p_gah"		=> json_encode($gah),
+					"p_depths"	=> json_encode($depths),
+					"p_ww"		=> json_encode($ww),
+					"p_wl"		=> json_encode($wl),
+					"p_lw"		=> json_encode($lw),
+					"p_ll"		=> json_encode($ll),
+					"scores"    => $data["scores"],
+					"surface"   => $data["surface"],
+					"time"      => $data["time"],
+					"detail"	=> $data["detail"],
+					"o_id"		=> $opponent_info["o_id"],
+					"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
+				];
+				DB::table($bucket_players_table)
+					->updateOrInsert(
+						["event_id" => $data["event_id"]],
+						$db_data
+					);
+				Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player1_id);
+			}
 		}
 
         foreach ($matches2_set as $data) {
-			$brw = array();
-			$brl = array();
-			$gah = array();
-			$depths = array();
-			$ww = array();
-			$wl = array();
-			$lw = array();
-			$ll = array();
-            // by sets
-            for ($i = 0; $i < 5; $i ++) {
-                if (count($data["sets"]) > $i) {
-					array_push($brw, $data["sets"][$i]["brw"]);
-					array_push($brl, $data["sets"][$i]["brl"]);
-					array_push($gah, $data["sets"][$i]["gah"]);
-					array_push($depths, $data["sets"][$i]["depth"]);
-					array_push($ww, $data["sets"][$i]["performance"]["ww"]);
-					array_push($wl, $data["sets"][$i]["performance"]["wl"]);
-					array_push($lw, $data["sets"][$i]["performance"]["lw"]);
-					array_push($ll, $data["sets"][$i]["performance"]["ll"]);
-                }
-            }
-			// insert $data to t_buckets table
-			$p_ranking = $data["player1_id"] == $player2_id ? $data["player1_ranking"] : $data["player2_ranking"];
-			$p_ranking = $p_ranking == "-" ? NULL : $p_ranking;
-			$player_info = [
-				"p_id" =>  $player2_id,
-				"p_name" => $data["player1_id"] == $player2_id ? $data["player1_name"] : $data["player2_name"],
-				"p_odd" => $data["player1_id"] == $player2_id ? $data["player1_odd"] : $data["player2_odd"],
-				"p_ranking" => $p_ranking,
-			];
-			$opponent_info = [
-				"o_id" => $data["player1_id"] == $player2_id ? $data["player2_id"] : $data["player1_id"],
-				"o_name" => $data["player1_id"] == $player2_id ? $data["player2_name"] : $data["player1_name"],
-				"o_odd" => $data["player1_id"] == $player2_id ? $data["player2_odd"] : $data["player1_odd"],
-				"o_ranking" => $data["player1_id"] == $player2_id ? $data["player2_ranking"] : $data["player1_ranking"],
-				"surface" => $data["surface"],
-				"event_id" => $data["event_id"],
-			];
-			
-			$db_data = [
-				"event_id"  => $data["event_id"],
-				"p_id"    	=> $player_info["p_id"],
-				"p_name"  	=> $player_info["p_name"],
-				"p_odd"   	=> $player_info["p_odd"],
-				"p_ranking" => $player_info["p_ranking"],
-				"p_brw"		=> json_encode($brw),
-				"p_brl"		=> json_encode($brl),
-				"p_gah"		=> json_encode($gah),
-				"p_depths"	=> json_encode($depths),
-				"p_ww"		=> json_encode($ww),
-				"p_wl"		=> json_encode($wl),
-				"p_lw"		=> json_encode($lw),
-				"p_ll"		=> json_encode($ll),
-				"scores"    => $data["scores"],
-				"surface"   => $data["surface"],
-				"time"      => $data["time"],
-				"detail"	=> $data["detail"],
-				"o_id"		=> $opponent_info["o_id"],
-				"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
-			];
-			DB::table($bucket_players_table)
-				->updateOrInsert(
-					["event_id" => $data["event_id"]],
-					$db_data
-				);
-			Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player2_id);
+			if ($data["scores"] != "" && $data["scores"] != "0-0" && $data["scores"] != "0-0,") {
+				$brw = array();
+				$brl = array();
+				$gah = array();
+				$depths = array();
+				$ww = array();
+				$wl = array();
+				$lw = array();
+				$ll = array();
+				// by sets
+				for ($i = 0; $i < 5; $i ++) {
+					if (count($data["sets"]) > $i) {
+						array_push($brw, $data["sets"][$i]["brw"]);
+						array_push($brl, $data["sets"][$i]["brl"]);
+						array_push($gah, $data["sets"][$i]["gah"]);
+						array_push($depths, $data["sets"][$i]["depth"]);
+						array_push($ww, $data["sets"][$i]["performance"]["ww"]);
+						array_push($wl, $data["sets"][$i]["performance"]["wl"]);
+						array_push($lw, $data["sets"][$i]["performance"]["lw"]);
+						array_push($ll, $data["sets"][$i]["performance"]["ll"]);
+					}
+				}
+				// insert $data to t_buckets table
+				$p_ranking = $data["player1_id"] == $player2_id ? $data["player1_ranking"] : $data["player2_ranking"];
+				$p_ranking = $p_ranking == "-" ? NULL : $p_ranking;
+				$player_info = [
+					"p_id" =>  $player2_id,
+					"p_name" => $data["player1_id"] == $player2_id ? $data["player1_name"] : $data["player2_name"],
+					"p_odd" => $data["player1_id"] == $player2_id ? $data["player1_odd"] : $data["player2_odd"],
+					"p_ranking" => $p_ranking,
+				];
+				$opponent_info = [
+					"o_id" => $data["player1_id"] == $player2_id ? $data["player2_id"] : $data["player1_id"],
+					"o_name" => $data["player1_id"] == $player2_id ? $data["player2_name"] : $data["player1_name"],
+					"o_odd" => $data["player1_id"] == $player2_id ? $data["player2_odd"] : $data["player1_odd"],
+					"o_ranking" => $data["player1_id"] == $player2_id ? $data["player2_ranking"] : $data["player1_ranking"],
+					"surface" => $data["surface"],
+					"event_id" => $data["event_id"],
+				];
+				
+				$db_data = [
+					"event_id"  => $data["event_id"],
+					"p_id"    	=> $player_info["p_id"],
+					"p_name"  	=> $player_info["p_name"],
+					"p_odd"   	=> $player_info["p_odd"],
+					"p_ranking" => $player_info["p_ranking"],
+					"p_brw"		=> json_encode($brw),
+					"p_brl"		=> json_encode($brl),
+					"p_gah"		=> json_encode($gah),
+					"p_depths"	=> json_encode($depths),
+					"p_ww"		=> json_encode($ww),
+					"p_wl"		=> json_encode($wl),
+					"p_lw"		=> json_encode($lw),
+					"p_ll"		=> json_encode($ll),
+					"scores"    => $data["scores"],
+					"surface"   => $data["surface"],
+					"time"      => $data["time"],
+					"detail"	=> $data["detail"],
+					"o_id"		=> $opponent_info["o_id"],
+					"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
+				];
+				DB::table($bucket_players_table)
+					->updateOrInsert(
+						["event_id" => $data["event_id"]],
+						$db_data
+					);
+				Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player2_id);
+			}
         }
 	}
 

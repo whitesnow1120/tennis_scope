@@ -220,8 +220,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   const filterBreak2 = filters['breakDiff2'];
 
   // -- player1
-  filteredData[player1_id] = filterRankingPlayer1.slice(0, filterLimit);
-  filteredData[player2_id] = filterRankingPlayer2.slice(0, filterLimit);
+  filteredData[player1_id] = [];
+  filteredData[player2_id] = [];
   filteredData['opponents'][player1_id] = filterRankingOpponent1;
   filteredData['opponents'][player2_id] = filterRankingOpponent2;
 
@@ -232,39 +232,45 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   let wl = 0;
   let lw = 0;
   let ll = 0;
-  for (let i = 0; i < filteredData[player1_id].length; i++) {
-    const item = filteredData[player1_id][i];
+  let playerLimitCount = 0;
+
+  for (let i = 0; i < filterRankingPlayer1.length; i++) {
+    const item = filterRankingPlayer1[i];
     const pBRW = JSON.parse(item['p_brw']);
     const pBRL = JSON.parse(item['p_brl']);
     const pGAH = JSON.parse(item['p_gah']);
+    let sumBRW = 0;
+    let sumBRL = 0;
+    let sumGAH = 0;
     if (filterSet1 === 'ALL') {
       for (let j = 0; j < 5; j++) {
-        totalPlayerBRW += pBRW[j].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-        totalPlayerBRL += pBRL[j].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-        totalPlayerGAH += pGAH[j].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
+        sumBRW += pBRW[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
+        sumBRL += pBRL[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
+        sumGAH += pGAH[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
       }
     } else {
-      totalPlayerBRW += pBRW[parseInt(filterSet1) - 1].reduce(
+      sumBRW += pBRW[parseInt(filterSet1) - 1].reduce(
         (a, b) => parseInt(a) + parseInt(b),
         0
       );
-      totalPlayerBRL += pBRL[parseInt(filterSet1) - 1].reduce(
+      sumBRL += pBRL[parseInt(filterSet1) - 1].reduce(
         (a, b) => parseInt(a) + parseInt(b),
         0
       );
-      totalPlayerGAH += pGAH[parseInt(filterSet1) - 1].reduce(
+      sumGAH += pGAH[parseInt(filterSet1) - 1].reduce(
         (a, b) => parseInt(a) + parseInt(b),
         0
       );
+    }
+    if (!(sumBRW == 0 && sumBRL == 0 && sumGAH == 0)) {
+      totalPlayerBRW += sumBRW;
+      totalPlayerBRL += sumBRL;
+      totalPlayerGAH += sumGAH;
+      filteredData[player1_id].push(item);
+      playerLimitCount++;
+    }
+    if (playerLimitCount === filterLimit) {
+      break;
     }
   }
   let filterBreakPlayer1 = [];
@@ -274,45 +280,98 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     let totalOpponentBRL = 0;
     let totalOpponentGAH = 0;
     let limit_cnt = 0;
-    for (let i = 0; i < filteredData['opponents'][player1_id].length; i++) {
-      const oItem = filteredData['opponents'][player1_id][i];
-      if (item['o_id'] === filteredData['opponents'][player1_id][i]['o_id']) {
-        const oBRW = JSON.parse(oItem['o_brw_set']);
-        const oBRL = JSON.parse(oItem['o_brl_set']);
-        const oGAH = JSON.parse(oItem['o_gah_set']);
-        if (filterSet1 === 'ALL') {
-          for (let j = 0; j < 5; j++) {
-            totalOpponentBRW += oBRW[j].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-            totalOpponentBRL += oBRL[j].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-            totalOpponentGAH += oGAH[j].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-          }
-        } else {
-          totalOpponentBRW += oBRW[parseInt(filterSet1) - 1].reduce(
+    let filteredOpponent1 = filteredData['opponents'][player1_id].filter(
+      (item) => item['o_id'] === item['o_id']
+    );
+    if (filteredOpponent1.length > 0) {
+      // order by time
+      filteredOpponent1.sort(function (a, b) {
+        return b['time'] - a['time'];
+      }); // Sort biggest first
+    }
+    for (let i = 0; i < filteredOpponent1.length; i++) {
+      const oItem = filteredOpponent1[i];
+      const oBRW = JSON.parse(oItem['o_brw_set']);
+      const oBRL = JSON.parse(oItem['o_brl_set']);
+      const oGAH = JSON.parse(oItem['o_gah_set']);
+      if (filterSet1 === 'ALL') {
+        for (let j = 0; j < 5; j++) {
+          totalOpponentBRW += oBRW[j].reduce(
             (a, b) => parseInt(a) + parseInt(b),
             0
           );
-          totalOpponentBRL += oBRL[parseInt(filterSet1) - 1].reduce(
+          totalOpponentBRL += oBRL[j].reduce(
             (a, b) => parseInt(a) + parseInt(b),
             0
           );
-          totalOpponentGAH += oGAH[parseInt(filterSet1) - 1].reduce(
+          totalOpponentGAH += oGAH[j].reduce(
             (a, b) => parseInt(a) + parseInt(b),
             0
           );
         }
-        limit_cnt++;
+      } else {
+        totalOpponentBRW += oBRW[parseInt(filterSet1) - 1].reduce(
+          (a, b) => parseInt(a) + parseInt(b),
+          0
+        );
+        totalOpponentBRL += oBRL[parseInt(filterSet1) - 1].reduce(
+          (a, b) => parseInt(a) + parseInt(b),
+          0
+        );
+        totalOpponentGAH += oGAH[parseInt(filterSet1) - 1].reduce(
+          (a, b) => parseInt(a) + parseInt(b),
+          0
+        );
       }
+      limit_cnt++;
       if (limit_cnt === filterLimit) {
         break;
+      }
+    }
+    if (limit_cnt === 0) {
+      let filteredOpponent2 = filteredData['opponents'][player1_id].filter(
+        (item) => item['o_id'] === item['o_id']
+      );
+      for (let i = 0; i < filteredOpponent2.length; i++) {
+        const oItem = filteredOpponent2[i];
+        if (item['o_id'] === oItem['o_id']) {
+          const oBRW = JSON.parse(oItem['o_brw_set']);
+          const oBRL = JSON.parse(oItem['o_brl_set']);
+          const oGAH = JSON.parse(oItem['o_gah_set']);
+          if (filterSet1 === 'ALL') {
+            for (let j = 0; j < 5; j++) {
+              totalOpponentBRW += oBRW[j].reduce(
+                (a, b) => parseInt(a) + parseInt(b),
+                0
+              );
+              totalOpponentBRL += oBRL[j].reduce(
+                (a, b) => parseInt(a) + parseInt(b),
+                0
+              );
+              totalOpponentGAH += oGAH[j].reduce(
+                (a, b) => parseInt(a) + parseInt(b),
+                0
+              );
+            }
+          } else {
+            totalOpponentBRW += oBRW[parseInt(filterSet1) - 1].reduce(
+              (a, b) => parseInt(a) + parseInt(b),
+              0
+            );
+            totalOpponentBRL += oBRL[parseInt(filterSet1) - 1].reduce(
+              (a, b) => parseInt(a) + parseInt(b),
+              0
+            );
+            totalOpponentGAH += oGAH[parseInt(filterSet1) - 1].reduce(
+              (a, b) => parseInt(a) + parseInt(b),
+              0
+            );
+          }
+          limit_cnt++;
+        }
+        if (limit_cnt === filterLimit) {
+          break;
+        }
       }
     }
 
@@ -366,39 +425,48 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   wl = 0;
   lw = 0;
   ll = 0;
-  for (let i = 0; i < filteredData[player2_id].length; i++) {
-    const item = filteredData[player2_id][i];
+  playerLimitCount = 0;
+  // // order by time
+  // filterRankingPlayer2.sort(function (a, b) {
+  //   return b['time'] - a['time'];
+  // }); // Sort biggest first
+  for (let i = 0; i < filterRankingPlayer2.length; i++) {
+    const item = filterRankingPlayer2[i];
     const pBRW = JSON.parse(item['p_brw']);
     const pBRL = JSON.parse(item['p_brl']);
     const pGAH = JSON.parse(item['p_gah']);
+    let sumBRW = 0;
+    let sumBRL = 0;
+    let sumGAH = 0;
     if (filterSet2 === 'ALL') {
       for (let j = 0; j < 5; j++) {
-        totalPlayerBRW += pBRW[j].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-        totalPlayerBRL += pBRL[j].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-        totalPlayerGAH += pGAH[j].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
+        sumBRW += pBRW[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
+        sumBRL += pBRL[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
+        sumGAH += pGAH[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
       }
     } else {
-      totalPlayerBRW += pBRW[parseInt(filterSet2) - 1].reduce(
+      sumBRW += pBRW[parseInt(filterSet2) - 1].reduce(
         (a, b) => parseInt(a) + parseInt(b),
         0
       );
-      totalPlayerBRL += pBRL[parseInt(filterSet2) - 1].reduce(
+      sumBRL += pBRL[parseInt(filterSet2) - 1].reduce(
         (a, b) => parseInt(a) + parseInt(b),
         0
       );
-      totalPlayerGAH += pGAH[parseInt(filterSet2) - 1].reduce(
+      sumGAH += pGAH[parseInt(filterSet2) - 1].reduce(
         (a, b) => parseInt(a) + parseInt(b),
         0
       );
+    }
+    if (!(sumBRW == 0 && sumBRL == 0 && sumGAH == 0)) {
+      totalPlayerBRW += sumBRW;
+      totalPlayerBRL += sumBRL;
+      totalPlayerGAH += sumGAH;
+      filteredData[player2_id].push(item);
+      playerLimitCount++;
+    }
+    if (playerLimitCount === filterLimit) {
+      break;
     }
   }
 
@@ -409,47 +477,107 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     let totalOpponentBRL = 0;
     let totalOpponentGAH = 0;
     let limit_cnt = 0;
-    for (let i = 0; i < filteredData['opponents'][player2_id].length; i++) {
-      const oItem = filteredData['opponents'][player2_id][i];
-      if (item['o_id'] === filteredData['opponents'][player2_id][i]['o_id']) {
-        const oBRW = JSON.parse(oItem['o_brw_set']);
-        const oBRL = JSON.parse(oItem['o_brl_set']);
-        const oGAH = JSON.parse(oItem['o_gah_set']);
-        if (filterSet2 === 'ALL') {
-          for (let j = 0; j < 5; j++) {
-            totalOpponentBRW += oBRW[j].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-            totalOpponentBRL += oBRL[j].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-            totalOpponentGAH += oGAH[j].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-          }
-        } else {
-          totalOpponentBRW += oBRW[parseInt(filterSet2) - 1].reduce(
+    let filteredOpponent2 = filteredData['opponents'][player2_id].filter(
+      (item) => item['o_id'] === item['o_id']
+    );
+    if (filteredOpponent2.length > 0) {
+      // order by time
+      filteredOpponent2.sort(function (a, b) {
+        return b['time'] - a['time'];
+      }); // Sort biggest first
+    }
+    for (let i = 0; i < filteredOpponent2.length; i++) {
+      const oItem = filteredOpponent2[i];
+      const oBRW = JSON.parse(oItem['o_brw_set']);
+      const oBRL = JSON.parse(oItem['o_brl_set']);
+      const oGAH = JSON.parse(oItem['o_gah_set']);
+      if (filterSet2 === 'ALL') {
+        for (let j = 0; j < 5; j++) {
+          totalOpponentBRW += oBRW[j].reduce(
             (a, b) => parseInt(a) + parseInt(b),
             0
           );
-          totalOpponentBRL += oBRL[parseInt(filterSet2) - 1].reduce(
+          totalOpponentBRL += oBRL[j].reduce(
             (a, b) => parseInt(a) + parseInt(b),
             0
           );
-          totalOpponentGAH += oGAH[parseInt(filterSet2) - 1].reduce(
+          totalOpponentGAH += oGAH[j].reduce(
             (a, b) => parseInt(a) + parseInt(b),
             0
           );
         }
-        limit_cnt++;
+      } else {
+        totalOpponentBRW += oBRW[parseInt(filterSet2) - 1].reduce(
+          (a, b) => parseInt(a) + parseInt(b),
+          0
+        );
+        totalOpponentBRL += oBRL[parseInt(filterSet2) - 1].reduce(
+          (a, b) => parseInt(a) + parseInt(b),
+          0
+        );
+        totalOpponentGAH += oGAH[parseInt(filterSet2) - 1].reduce(
+          (a, b) => parseInt(a) + parseInt(b),
+          0
+        );
       }
+      limit_cnt++;
       if (limit_cnt === filterLimit) {
         break;
       }
     }
+    if (limit_cnt === 0) {
+      let filteredOpponent1 = filteredData['opponents'][player1_id].filter(
+        (item) => item['o_id'] === item['o_id']
+      );
+      if (filteredOpponent1.length > 0) {
+        // order by time
+        filteredOpponent1.sort(function (a, b) {
+          return b['time'] - a['time'];
+        }); // Sort biggest first
+      }
+      for (let i = 0; i < filteredOpponent1.length; i++) {
+        const oItem = filteredOpponent1[i];
+        if (item['o_id'] === oItem['o_id']) {
+          const oBRW = JSON.parse(oItem['o_brw_set']);
+          const oBRL = JSON.parse(oItem['o_brl_set']);
+          const oGAH = JSON.parse(oItem['o_gah_set']);
+          if (filterSet2 === 'ALL') {
+            for (let j = 0; j < 5; j++) {
+              totalOpponentBRW += oBRW[j].reduce(
+                (a, b) => parseInt(a) + parseInt(b),
+                0
+              );
+              totalOpponentBRL += oBRL[j].reduce(
+                (a, b) => parseInt(a) + parseInt(b),
+                0
+              );
+              totalOpponentGAH += oGAH[j].reduce(
+                (a, b) => parseInt(a) + parseInt(b),
+                0
+              );
+            }
+          } else {
+            totalOpponentBRW += oBRW[parseInt(filterSet2) - 1].reduce(
+              (a, b) => parseInt(a) + parseInt(b),
+              0
+            );
+            totalOpponentBRL += oBRL[parseInt(filterSet2) - 1].reduce(
+              (a, b) => parseInt(a) + parseInt(b),
+              0
+            );
+            totalOpponentGAH += oGAH[parseInt(filterSet2) - 1].reduce(
+              (a, b) => parseInt(a) + parseInt(b),
+              0
+            );
+          }
+          limit_cnt++;
+        }
+        if (limit_cnt === filterLimit) {
+          break;
+        }
+      }
+    }
+
     // check LLB, MWB
     if (
       filterBreak2 === 'ALL' ||

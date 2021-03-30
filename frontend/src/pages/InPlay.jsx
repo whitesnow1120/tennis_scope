@@ -63,6 +63,7 @@ const Inplay = () => {
                   key={item.id}
                   item={item}
                   type="inplay"
+                  loading={loading}
                   setLoading={setLoading}
                 />
               ))
