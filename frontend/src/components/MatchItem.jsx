@@ -8,11 +8,10 @@ import {
   GET_RELATION_FILTERED_DATA,
   GET_OPENED_DETAIL,
 } from '../store/actions/types';
-import { getWinner, formateDateTime, filterData } from '../utils';
+import { getWinner, formatDateTime, filterData } from '../utils';
 import Surface from './InplayDetail/Surface';
 import Set from './InplayDetail/Set';
 import FilterRank from './InplayDetail/FilterRank';
-import FilterBreak from './InplayDetail/FilterBreak';
 import FilterOpponent from './InplayDetail/FilterOpponent';
 import FilterLimit from './InplayDetail/FilterLimit';
 import PlayerDetail from './InplayDetail/PlayerDetail';
@@ -26,15 +25,13 @@ const MatchItem = (props) => {
   const [selectedSurface, setSelectedSurface] = useState('ALL');
   const [selectedRankDiff1, setSelectedRankDiff1] = useState('ALL');
   const [selectedRankDiff2, setSelectedRankDiff2] = useState('ALL');
-  const [selectedBreakDiff1, setSelectedBreakDiff1] = useState('ALL');
-  const [selectedBreakDiff2, setSelectedBreakDiff2] = useState('ALL');
   const [selectedOpponent, setSelectedOpponent] = useState('ALL');
   const [selectedLimit, setSelectedLimit] = useState(10);
   const [selectedSet1, setSelectedSet1] = useState('ALL');
   const [selectedSet2, setSelectedSet2] = useState('ALL');
 
   const player = getWinner(item.scores);
-  const datetime = formateDateTime(item.time);
+  const datetime = formatDateTime(item.time);
   const scores = item.scores.split(',');
 
   useEffect(() => {
@@ -73,8 +70,6 @@ const MatchItem = (props) => {
         opponent: selectedOpponent,
         rankDiff1: selectedRankDiff1,
         rankDiff2: selectedRankDiff2,
-        breakDiff1: selectedBreakDiff1,
-        breakDiff2: selectedBreakDiff2,
         set1: selectedSet1,
         set2: selectedSet2,
         limit: selectedLimit,
@@ -109,8 +104,6 @@ const MatchItem = (props) => {
     selectedOpponent,
     selectedRankDiff1,
     selectedRankDiff2,
-    selectedBreakDiff1,
-    selectedBreakDiff2,
     selectedSet1,
     selectedSet2,
     selectedLimit,
@@ -238,10 +231,6 @@ const MatchItem = (props) => {
                     selectedRankDiff={selectedRankDiff1}
                     setSelectedRankDiff={setSelectedRankDiff1}
                   />
-                  <FilterBreak
-                    selectedBreakDiff={selectedBreakDiff1}
-                    setSelectedBreakDiff={setSelectedBreakDiff1}
-                  />
                 </div>
               </div>
               <div className="right-box">
@@ -252,10 +241,6 @@ const MatchItem = (props) => {
                   <FilterRank
                     selectedRankDiff={selectedRankDiff2}
                     setSelectedRankDiff={setSelectedRankDiff2}
-                  />
-                  <FilterBreak
-                    selectedBreakDiff={selectedBreakDiff2}
-                    setSelectedBreakDiff={setSelectedBreakDiff2}
                   />
                 </div>
               </div>

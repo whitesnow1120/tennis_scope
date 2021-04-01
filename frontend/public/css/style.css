@@ -1859,4 +1859,42 @@ p {
   }
 }
 
+.tooltip-box {
+  width: 100%;
+  display: block;
+}
+
+#opponent_tooltip {
+  position: relative;
+}
+
+.opponent-tooltip-content span {
+  display: block;
+  font-size: 13px;
+  font-weight: bold;
+  margin: 5px;
+}
+.e-tooltip-wrap.e-popup {
+  background-color: #000 !important;
+  border: 0 !important;
+  margin-top: -110px;
+}
+
+.e-tooltip-wrap.e-popup > div:nth-child(2) > div:nth-child(1){
+  border-bottom: 0 !important;
+}
+
+.e-tooltip-wrap.e-popup > div:nth-child(2) > div:nth-child(2){
+  color: #000 !important;
+  border: 0 !important;
+}
+
+.e-arrow-tip-inner.e-tip-top::before {
+  content: '\e919' !important;
+}
+
+.e-tooltip-wrap.e-popup > div:nth-child(2){
+  top: 71px !important;
+  height: 10px !important;
+}
 /*# sourceMappingURL=style.css.map */

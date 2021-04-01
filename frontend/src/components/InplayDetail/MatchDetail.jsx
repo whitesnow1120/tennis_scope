@@ -1,26 +1,30 @@
 import React, { useState, useEffect } from 'react';
+import { TooltipComponent } from '@syncfusion/ej2-react-popups';
 import PropTypes from 'prop-types';
 
+import { formatDateTime } from '../../utils';
 import BreakHoldDetail from './BreakHoldDetail';
 
 const MatchDetail = (props) => {
   const { match } = props;
   const [scoreClassName, setScoreClassName] = useState('match-sets-score');
-  const [brw, setBRW] = useState(0);
-  const [brl, setBRL] = useState(0);
-  const [gah, setGAH] = useState(0);
   const [opponentRank, setOpponentRank] = useState('-');
   const [scores, setScores] = useState([]);
   const [depths, setDepths] = useState([]);
   const [home, setHome] = useState(0);
+  const [tooltipContent, setToolTipContent] = useState("");
 
   useEffect(() => {
     if (match != undefined) {
-      const scoreClsName = "match-sets-score";
-      setBRW(match['oBRW']);
-      setBRL(match['oBRL']);
-      setGAH(match['oGAH']);
+      const matchDate = formatDateTime(match.time);
+      let content = `<div class='opponent-tooltip-content'><span>${matchDate[0]}</span>`;
+      content += `<span>${match["o_name"]}</span>`;
+      let surface = match["surface"] === null ? "-" : match["surface"];
+      let odd = match["o_odd"] === null ? "-" : match["o_odd"];
+      content += `<span>${surface} ${odd}</span></div>`;
 
+      setToolTipContent(content);
+      const scoreClsName = 'match-sets-score';
       const allScores = match.scores.split(',');
       setScores(allScores);
       setOpponentRank(match['o_ranking'] === null ? '-' : match['o_ranking']);
@@ -94,10 +98,19 @@ const MatchDetail = (props) => {
     <>
       <div className="match-detail">
         <div className="opponent-detail">
-          <BreakHoldDetail brw={brw} brl={brl} gah={gah}>
-            <div className="opponent-ranking">
-              <span>{opponentRank}</span>
-            </div>
+          <BreakHoldDetail player={false}>
+            <TooltipComponent
+              className="tooltip-box"
+              content={tooltipContent}
+              tipPointerPosition="Start"
+              target="#opponent_tooltip"
+            >
+              <div className="opponent-ranking">
+                <div id="opponent_tooltip">
+                  <span>{opponentRank}</span>
+                </div>
+              </div>
+            </TooltipComponent>
           </BreakHoldDetail>
         </div>
         <div className="match-sets">

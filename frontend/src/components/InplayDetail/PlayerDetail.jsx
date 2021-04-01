@@ -42,10 +42,20 @@ const PlayerDetail = (props) => {
     <>
       <div className="player-detail">
         <div className="player-detail-left">
-          <BreakHoldDetail brw={player1BRW} brl={player1BRL} gah={player1GAH} />
+          <BreakHoldDetail
+            brw={player1BRW}
+            brl={player1BRL}
+            gah={player1GAH}
+            player={true}
+          />
         </div>
         <div className="player-detail-right">
-          <BreakHoldDetail brw={player2BRW} brl={player2BRL} gah={player2GAH} />
+          <BreakHoldDetail
+            brw={player2BRW}
+            brl={player2BRL}
+            gah={player2GAH}
+            player={true}
+          />
         </div>
       </div>
       <div className="set-percent">

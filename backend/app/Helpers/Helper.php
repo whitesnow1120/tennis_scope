@@ -18,7 +18,7 @@ class Helper {
 		} else if ((int)$game == 40) {
 			return 3;
 		}
-		return NULL;
+		return -1;
 	}
 
 	public static function getCorrectDetail($detail) {
@@ -111,7 +111,7 @@ class Helper {
 								$set_details = explode(":", $details[$k]);
 								if (count($set_details) == 4 && ($set_details[1] == "b" || $set_details[1] == "h")) {
 									$game = Helper::getGamesPoint($set_details[3]);
-									if ($game) {
+									if ($game != -1) {
 										if ((int)$set_details[2] == $home) {
 											if ($set_details[1] == "b") {
 												$sets[$i]["sets"][$j]["brw"][$game] ++;
@@ -139,7 +139,7 @@ class Helper {
 					// calculate the depth
 					$depths = array();
 					$depths[0] = 0;
-					for ($n = 0; $n < $score_cnt; $n ++) {
+					for ($n = 1; $n < $score_cnt + 1; $n ++) {
 						if ($player_scores[$n] == 6 || $opponent_scores[$n] == 6) {
 							break;
 						} else {
@@ -193,12 +193,10 @@ class Helper {
 				}
 				$j ++;
 			}
-			
 			$i ++;
 		}
 		return $sets;
 	}
-	
 
 	/**
 	 * Get the start and end games for only opponents
@@ -256,7 +254,7 @@ class Helper {
 								$set_details = explode(":", $details[$k]);
 								if (count($set_details) == 4 && ($set_details[1] == "b" || $set_details[1] == "h")) {
 									$game = Helper::getGamesPoint($set_details[3]);
-									if ($game) {
+									if ($game != -1) {
 										if ((int)$set_details[2] == $home) {
 											if ($set_details[1] == "b") {
 												$sets[$i]["brw"][$j][$game] ++;
@@ -313,7 +311,7 @@ class Helper {
   	public static function importHistoryData($startDate=NULL) {
     	$start = microtime(true);
     	if (!$startDate) {
-      		$startDate = "20180101";
+      		$startDate = "20210324";
     	}
     	$period = new DatePeriod(
 			new DateTime($startDate),
@@ -395,17 +393,36 @@ class Helper {
 		$start_time = microtime(true);
 		$log = "Start: " . date("Y-m-d H:i:s");
 		$date = date("Ymd");
+		$bucket_tables = DB::table("pg_catalog.pg_tables")
+					->where("schemaname", "public")
+					->where("tablename", "like", "t_bucket_%")
+					->get();
+		$bucket_table_names = array();
+		foreach($bucket_tables as $bucket_table) {
+			array_push($bucket_table_names, $bucket_table->tablename);
+		}
+
 		$match_table_name = "t_matches_" . substr($date, 0, 4) . "_" . substr($date, 4, 2);
 		if (Schema::hasTable($match_table_name)) {
 			$upcomingInplayData = DB::table($match_table_name)
 									->whereIn("time_status", [0, 1])
 									->get();
 			$player_ids = array();
+			$enable_names = array();
 			$i = 0;
 			foreach ($upcomingInplayData as $data) {
-				$player_ids[$i]["player1_id"] = $data->player1_id;
-				$player_ids[$i]["player2_id"] = $data->player2_id;
-				$i ++;
+				$enable_name = "t_bucket_players_" . $data->player1_id . "_" . $data->player2_id;
+				if (!(in_array($enable_names, $bucket_table_names))) {
+					$player_ids[$i]["player1_id"] = $data->player1_id;
+					$player_ids[$i]["player2_id"] = $data->player2_id;
+					$i ++;
+				}
+				array_push($enable_names, $enable_name);
+			}
+			// drop the old pre-calculated tables
+			$old_bucket_tables = array_diff($bucket_table_names, $enable_names);
+			foreach ($old_bucket_tables as $bucket_table) {
+				Schema::dropIfExists($bucket_table);
 			}
 	
 			$history_tables = DB::table("pg_catalog.pg_tables")
@@ -437,34 +454,36 @@ class Helper {
 						$table->json("p_wl");
 						$table->json("p_lw");
 						$table->json("p_ll");
+						$table->integer("o_id");
+						$table->string("o_name", 100);
+						$table->float("o_odd")->nullable();
+						$table->integer("o_ranking")->nullable();
 						$table->string("scores", 50)->nullable();
 						$table->string("surface", 50)->nullable();
 						$table->integer("time");
 						$table->text("detail")->nullable();
-						$table->integer("o_id");
-						$table->integer("o_ranking")->nullable();
 					});
 				}
 
-				$bucket_opponents_table = "t_bucket_opponents_" . $player1_id . "_" . $player2_id;
-				if (!Schema::hasTable($bucket_opponents_table)) {
-					// Code to create table
-					Schema::create($bucket_opponents_table, function($table) {
-						$table->increments("id");
-						$table->integer("event_id");
-						$table->integer("o_id");
-						$table->string("o_name", 100);
-						$table->integer("o_ranking")->nullable();
-						$table->float("o_odd")->nullable();
-						$table->json("o_brw_set");
-						$table->json("o_brl_set");
-						$table->json("o_gah_set");
-						$table->string("surface", 100)->nullable();
-						$table->integer("time");
-						$table->integer("p_id"); // not oo_id [player1_id or player2_id]
-					});
-				}
-				Helper::preCalculate($bucket_players_table, $bucket_opponents_table, $player1_id, $player2_id, $history_tables, $players);
+				// $bucket_opponents_table = "t_bucket_opponents_" . $player1_id . "_" . $player2_id;
+				// if (!Schema::hasTable($bucket_opponents_table)) {
+				// 	// Code to create table
+				// 	Schema::create($bucket_opponents_table, function($table) {
+				// 		$table->increments("id");
+				// 		$table->integer("event_id");
+				// 		$table->integer("o_id");
+				// 		$table->string("o_name", 100);
+				// 		$table->integer("o_ranking")->nullable();
+				// 		$table->float("o_odd")->nullable();
+				// 		$table->json("o_brw_set");
+				// 		$table->json("o_brl_set");
+				// 		$table->json("o_gah_set");
+				// 		$table->string("surface", 100)->nullable();
+				// 		$table->integer("time");
+				// 		$table->integer("p_id"); // not oo_id [player1_id or player2_id]
+				// 	});
+				// }
+				Helper::preCalculate($bucket_players_table, $player1_id, $player2_id, $history_tables, $players);
 			}
 		}
 
@@ -536,7 +555,7 @@ class Helper {
 	/**
 	 * 
 	 */
-	public static function preCalculate($bucket_players_table, $bucket_opponents_table, $player1_id, $player2_id, $history_tables, $players) {
+	public static function preCalculate($bucket_players_table, $player1_id, $player2_id, $history_tables, $players) {
 		$matches1_array = array();
         $matches2_array = array();
         foreach ($history_tables as $table) {
@@ -627,6 +646,8 @@ class Helper {
 					"time"      => $data["time"],
 					"detail"	=> $data["detail"],
 					"o_id"		=> $opponent_info["o_id"],
+					"o_name"	=> $opponent_info["o_name"],
+					"o_odd"		=> $opponent_info["o_odd"],
 					"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
 				];
 				DB::table($bucket_players_table)
@@ -634,7 +655,7 @@ class Helper {
 						["event_id" => $data["event_id"]],
 						$db_data
 					);
-				Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player1_id);
+				// Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player1_id);
 			}
 		}
 
@@ -698,6 +719,8 @@ class Helper {
 					"time"      => $data["time"],
 					"detail"	=> $data["detail"],
 					"o_id"		=> $opponent_info["o_id"],
+					"o_name"	=> $opponent_info["o_name"],
+					"o_odd"		=> $opponent_info["o_odd"],
 					"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
 				];
 				DB::table($bucket_players_table)
@@ -705,7 +728,7 @@ class Helper {
 						["event_id" => $data["event_id"]],
 						$db_data
 					);
-				Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player2_id);
+				// Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player2_id);
 			}
         }
 	}

@@ -37,5 +37,6 @@ class UpdateDB extends Command
     public function handle()
     {
         Helper::updateDB();
+        Helper::preCalculation();
     }
 }

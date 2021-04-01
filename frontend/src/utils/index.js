@@ -36,7 +36,7 @@ export const formatDate = (date) => {
   return [year, month, day].join('-');
 };
 
-export const formateDateTime = (timestamp) => {
+export const formatDateTime = (timestamp) => {
   let d = new Date(timestamp * 1000);
   let month = '' + (d.getMonth() + 1);
   let day = '' + d.getDate();
@@ -58,7 +58,6 @@ export const formateDateTime = (timestamp) => {
 
 export const filterData = (player1_id, player2_id, relationData, filters) => {
   let filteredData = { ...relationData };
-  filteredData['opponents'] = { ...relationData['opponents'] };
   // filtering by surface
   if (filters['surface'] != 'ALL') {
     filteredData[player1_id] = filteredData[player1_id].filter(
@@ -67,13 +66,6 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     filteredData[player2_id] = filteredData[player2_id].filter(
       (item) => item['surface'] === filters['surface']
     );
-
-    filteredData['opponents'][player1_id] = filteredData['opponents'][
-      player1_id
-    ].filter((item) => item['surface'] === filters['surface']);
-    filteredData['opponents'][player2_id] = filteredData['opponents'][
-      player2_id
-    ].filter((item) => item['surface'] === filters['surface']);
   }
 
   let player1_ranking =
@@ -96,18 +88,10 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
           item['o_ranking'] <= player2_ranking + 30 &&
           item['o_ranking'] >= player2_ranking - 30
       );
-
-      filteredData['opponents'][player1_id] = filteredData['opponents'][
-        player1_id
-      ].filter(
-        (item) =>
-          item['o_ranking'] != null &&
-          item['o_ranking'] <= player2_ranking + 30 &&
-          item['o_ranking'] >= player2_ranking - 30
-      );
     } else {
-      filteredData[player1_id] = [];
-      filteredData['opponents'][player1_id] = [];
+      filteredData[player1_id] = filteredData[player1_id].filter(
+        (item) => item['o_ranking'] == null
+      );
     }
 
     if (player1_ranking !== 99999) {
@@ -117,18 +101,10 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
           item['o_ranking'] <= player1_ranking + 30 &&
           item['o_ranking'] >= player1_ranking - 30
       );
-
-      filteredData['opponents'][player2_id] = filteredData['opponents'][
-        player2_id
-      ].filter(
-        (item) =>
-          item['o_ranking'] != null &&
-          item['o_ranking'] <= player1_ranking + 30 &&
-          item['o_ranking'] >= player1_ranking - 30
-      );
     } else {
-      filteredData[player2_id] = [];
-      filteredData['opponents'][player2_id] = [];
+      filteredData[player2_id] = filteredData[player2_id].filter(
+        (item) => item['o_ranking'] == null
+      );
     }
   } else if (filters['opponent'] === 'SO') {
     const oRankings1 = filteredData[player1_id].map((item) => {
@@ -154,24 +130,13 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     filteredData[player2_id].sort(function (a, b) {
       return a['o_ranking'] - b['o_ranking'];
     }); // Sort youngest first
-    filteredData['opponents'][player1_id] = filteredData['opponents'][
-      player1_id
-    ].filter((item) => ids.includes(item['o_id']));
-    filteredData['opponents'][player2_id] = filteredData['opponents'][
-      player2_id
-    ].filter((item) => ids.includes(item['o_id']));
   }
 
   // filtering by HIR, LOR
   let filterRankingPlayer1 = [];
   let filterRankingPlayer2 = [];
-  let filterRankingOpponent1 = [];
-  let filterRankingOpponent2 = [];
   if (filters['rankDiff1'] === 'HIR') {
     filterRankingPlayer1 = filteredData[player1_id].filter(
-      (item) => item['o_ranking'] != null && item['o_ranking'] < player1_ranking
-    );
-    filterRankingOpponent1 = filteredData['opponents'][player1_id].filter(
       (item) => item['o_ranking'] != null && item['o_ranking'] < player1_ranking
     );
   } else if (filters['rankDiff1'] === 'LOR') {
@@ -179,22 +144,12 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
       (item) =>
         item['o_ranking'] === null || item['o_ranking'] > player1_ranking
     );
-
-    filterRankingOpponent1 = filteredData['opponents'][player1_id].filter(
-      (item) =>
-        item['o_ranking'] === null || item['o_ranking'] > player1_ranking
-    );
   } else {
     filterRankingPlayer1 = filteredData[player1_id];
-    filterRankingOpponent1 = filteredData['opponents'][player1_id];
   }
 
   if (filters['rankDiff2'] === 'HIR') {
     filterRankingPlayer2 = filteredData[player2_id].filter(
-      (item) => item['o_ranking'] != null && item['o_ranking'] < player2_ranking
-    );
-
-    filterRankingOpponent2 = filteredData['opponents'][player2_id].filter(
       (item) => item['o_ranking'] != null && item['o_ranking'] < player2_ranking
     );
   } else if (filters['rankDiff2'] === 'LOR') {
@@ -202,29 +157,18 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
       (item) =>
         item['o_ranking'] === null || item['o_ranking'] > player2_ranking
     );
-
-    filterRankingOpponent2 = filteredData['opponents'][player2_id].filter(
-      (item) =>
-        item['o_ranking'] === null || item['o_ranking'] > player2_ranking
-    );
   } else {
     filterRankingPlayer2 = filteredData[player2_id];
-    filterRankingOpponent2 = filteredData['opponents'][player2_id];
   }
 
   // calculate BRW, BRL and GAH
   const filterLimit = filters['limit'];
   const filterSet1 = filters['set1'];
   const filterSet2 = filters['set2'];
-  const filterBreak1 = filters['breakDiff1'];
-  const filterBreak2 = filters['breakDiff2'];
 
   // -- player1
   filteredData[player1_id] = [];
   filteredData[player2_id] = [];
-  filteredData['opponents'][player1_id] = filterRankingOpponent1;
-  filteredData['opponents'][player2_id] = filterRankingOpponent2;
-
   let totalPlayerBRW = 0;
   let totalPlayerBRL = 0;
   let totalPlayerGAH = 0;
@@ -232,7 +176,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   let wl = 0;
   let lw = 0;
   let ll = 0;
-  let playerLimitCount = 0;
+  let limitCnt = 0;
+  filteredData['performance'] = {};
 
   for (let i = 0; i < filterRankingPlayer1.length; i++) {
     const item = filterRankingPlayer1[i];
@@ -266,121 +211,6 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
       totalPlayerBRW += sumBRW;
       totalPlayerBRL += sumBRL;
       totalPlayerGAH += sumGAH;
-      filteredData[player1_id].push(item);
-      playerLimitCount++;
-    }
-    if (playerLimitCount === filterLimit) {
-      break;
-    }
-  }
-  let filterBreakPlayer1 = [];
-  filteredData[player1_id].map((item) => {
-    // for opponents
-    let totalOpponentBRW = 0;
-    let totalOpponentBRL = 0;
-    let totalOpponentGAH = 0;
-    let limit_cnt = 0;
-    let filteredOpponent1 = filteredData['opponents'][player1_id].filter(
-      (item) => item['o_id'] === item['o_id']
-    );
-    if (filteredOpponent1.length > 0) {
-      // order by time
-      filteredOpponent1.sort(function (a, b) {
-        return b['time'] - a['time'];
-      }); // Sort biggest first
-    }
-    for (let i = 0; i < filteredOpponent1.length; i++) {
-      const oItem = filteredOpponent1[i];
-      const oBRW = JSON.parse(oItem['o_brw_set']);
-      const oBRL = JSON.parse(oItem['o_brl_set']);
-      const oGAH = JSON.parse(oItem['o_gah_set']);
-      if (filterSet1 === 'ALL') {
-        for (let j = 0; j < 5; j++) {
-          totalOpponentBRW += oBRW[j].reduce(
-            (a, b) => parseInt(a) + parseInt(b),
-            0
-          );
-          totalOpponentBRL += oBRL[j].reduce(
-            (a, b) => parseInt(a) + parseInt(b),
-            0
-          );
-          totalOpponentGAH += oGAH[j].reduce(
-            (a, b) => parseInt(a) + parseInt(b),
-            0
-          );
-        }
-      } else {
-        totalOpponentBRW += oBRW[parseInt(filterSet1) - 1].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-        totalOpponentBRL += oBRL[parseInt(filterSet1) - 1].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-        totalOpponentGAH += oGAH[parseInt(filterSet1) - 1].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-      }
-      limit_cnt++;
-      if (limit_cnt === filterLimit) {
-        break;
-      }
-    }
-    if (limit_cnt === 0) {
-      let filteredOpponent2 = filteredData['opponents'][player1_id].filter(
-        (item) => item['o_id'] === item['o_id']
-      );
-      for (let i = 0; i < filteredOpponent2.length; i++) {
-        const oItem = filteredOpponent2[i];
-        if (item['o_id'] === oItem['o_id']) {
-          const oBRW = JSON.parse(oItem['o_brw_set']);
-          const oBRL = JSON.parse(oItem['o_brl_set']);
-          const oGAH = JSON.parse(oItem['o_gah_set']);
-          if (filterSet1 === 'ALL') {
-            for (let j = 0; j < 5; j++) {
-              totalOpponentBRW += oBRW[j].reduce(
-                (a, b) => parseInt(a) + parseInt(b),
-                0
-              );
-              totalOpponentBRL += oBRL[j].reduce(
-                (a, b) => parseInt(a) + parseInt(b),
-                0
-              );
-              totalOpponentGAH += oGAH[j].reduce(
-                (a, b) => parseInt(a) + parseInt(b),
-                0
-              );
-            }
-          } else {
-            totalOpponentBRW += oBRW[parseInt(filterSet1) - 1].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-            totalOpponentBRL += oBRL[parseInt(filterSet1) - 1].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-            totalOpponentGAH += oGAH[parseInt(filterSet1) - 1].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-          }
-          limit_cnt++;
-        }
-        if (limit_cnt === filterLimit) {
-          break;
-        }
-      }
-    }
-
-    // check LLB, MWB
-    if (
-      filterBreak1 === 'ALL' ||
-      (filterBreak1 === 'LLB' && totalPlayerBRL >= totalOpponentBRL) ||
-      (filterBreak1 === 'MWB' && totalPlayerBRW <= totalOpponentBRW)
-    ) {
       const pWW = JSON.parse(item['p_ww']);
       const pWL = JSON.parse(item['p_wl']);
       const pLW = JSON.parse(item['p_lw']);
@@ -396,17 +226,14 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         lw += parseInt(pLW[parseInt(filterSet1) - 1]);
         ll += parseInt(pLL[parseInt(filterSet1) - 1]);
       }
-      filterBreakPlayer1.push({
-        ...item,
-        oBRW: totalOpponentBRW,
-        oBRL: totalOpponentBRL,
-        oGAH: totalOpponentGAH,
-      });
+      filteredData[player1_id].push(item);
+      limitCnt++;
     }
-  });
+    if (limitCnt === filterLimit) {
+      break;
+    }
+  }
 
-  filteredData[player1_id] = filterBreakPlayer1;
-  filteredData['performance'] = {};
   filteredData['performance'][player1_id] = {
     pBRW: totalPlayerBRW,
     pBRL: totalPlayerBRL,
@@ -425,11 +252,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   wl = 0;
   lw = 0;
   ll = 0;
-  playerLimitCount = 0;
-  // // order by time
-  // filterRankingPlayer2.sort(function (a, b) {
-  //   return b['time'] - a['time'];
-  // }); // Sort biggest first
+  limitCnt = 0;
   for (let i = 0; i < filterRankingPlayer2.length; i++) {
     const item = filterRankingPlayer2[i];
     const pBRW = JSON.parse(item['p_brw']);
@@ -462,128 +285,6 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
       totalPlayerBRW += sumBRW;
       totalPlayerBRL += sumBRL;
       totalPlayerGAH += sumGAH;
-      filteredData[player2_id].push(item);
-      playerLimitCount++;
-    }
-    if (playerLimitCount === filterLimit) {
-      break;
-    }
-  }
-
-  let filterBreakPlayer2 = [];
-  filteredData[player2_id].map((item) => {
-    // for opponents
-    let totalOpponentBRW = 0;
-    let totalOpponentBRL = 0;
-    let totalOpponentGAH = 0;
-    let limit_cnt = 0;
-    let filteredOpponent2 = filteredData['opponents'][player2_id].filter(
-      (item) => item['o_id'] === item['o_id']
-    );
-    if (filteredOpponent2.length > 0) {
-      // order by time
-      filteredOpponent2.sort(function (a, b) {
-        return b['time'] - a['time'];
-      }); // Sort biggest first
-    }
-    for (let i = 0; i < filteredOpponent2.length; i++) {
-      const oItem = filteredOpponent2[i];
-      const oBRW = JSON.parse(oItem['o_brw_set']);
-      const oBRL = JSON.parse(oItem['o_brl_set']);
-      const oGAH = JSON.parse(oItem['o_gah_set']);
-      if (filterSet2 === 'ALL') {
-        for (let j = 0; j < 5; j++) {
-          totalOpponentBRW += oBRW[j].reduce(
-            (a, b) => parseInt(a) + parseInt(b),
-            0
-          );
-          totalOpponentBRL += oBRL[j].reduce(
-            (a, b) => parseInt(a) + parseInt(b),
-            0
-          );
-          totalOpponentGAH += oGAH[j].reduce(
-            (a, b) => parseInt(a) + parseInt(b),
-            0
-          );
-        }
-      } else {
-        totalOpponentBRW += oBRW[parseInt(filterSet2) - 1].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-        totalOpponentBRL += oBRL[parseInt(filterSet2) - 1].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-        totalOpponentGAH += oGAH[parseInt(filterSet2) - 1].reduce(
-          (a, b) => parseInt(a) + parseInt(b),
-          0
-        );
-      }
-      limit_cnt++;
-      if (limit_cnt === filterLimit) {
-        break;
-      }
-    }
-    if (limit_cnt === 0) {
-      let filteredOpponent1 = filteredData['opponents'][player1_id].filter(
-        (item) => item['o_id'] === item['o_id']
-      );
-      if (filteredOpponent1.length > 0) {
-        // order by time
-        filteredOpponent1.sort(function (a, b) {
-          return b['time'] - a['time'];
-        }); // Sort biggest first
-      }
-      for (let i = 0; i < filteredOpponent1.length; i++) {
-        const oItem = filteredOpponent1[i];
-        if (item['o_id'] === oItem['o_id']) {
-          const oBRW = JSON.parse(oItem['o_brw_set']);
-          const oBRL = JSON.parse(oItem['o_brl_set']);
-          const oGAH = JSON.parse(oItem['o_gah_set']);
-          if (filterSet2 === 'ALL') {
-            for (let j = 0; j < 5; j++) {
-              totalOpponentBRW += oBRW[j].reduce(
-                (a, b) => parseInt(a) + parseInt(b),
-                0
-              );
-              totalOpponentBRL += oBRL[j].reduce(
-                (a, b) => parseInt(a) + parseInt(b),
-                0
-              );
-              totalOpponentGAH += oGAH[j].reduce(
-                (a, b) => parseInt(a) + parseInt(b),
-                0
-              );
-            }
-          } else {
-            totalOpponentBRW += oBRW[parseInt(filterSet2) - 1].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-            totalOpponentBRL += oBRL[parseInt(filterSet2) - 1].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-            totalOpponentGAH += oGAH[parseInt(filterSet2) - 1].reduce(
-              (a, b) => parseInt(a) + parseInt(b),
-              0
-            );
-          }
-          limit_cnt++;
-        }
-        if (limit_cnt === filterLimit) {
-          break;
-        }
-      }
-    }
-
-    // check LLB, MWB
-    if (
-      filterBreak2 === 'ALL' ||
-      (filterBreak2 === 'LLB' && totalPlayerBRL >= totalOpponentBRL) ||
-      (filterBreak2 === 'MWB' && totalPlayerBRW <= totalOpponentBRW)
-    ) {
       const pWW = JSON.parse(item['p_ww']);
       const pWL = JSON.parse(item['p_wl']);
       const pLW = JSON.parse(item['p_lw']);
@@ -599,16 +300,13 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         lw += parseInt(pLW[parseInt(filterSet2) - 1]);
         ll += parseInt(pLL[parseInt(filterSet2) - 1]);
       }
-      filterBreakPlayer2.push({
-        ...item,
-        oBRW: totalOpponentBRW,
-        oBRL: totalOpponentBRL,
-        oGAH: totalOpponentGAH,
-      });
+      filteredData[player2_id].push(item);
+      limitCnt++;
     }
-  });
-
-  filteredData[player2_id] = filterBreakPlayer2;
+    if (limitCnt === filterLimit) {
+      break;
+    }
+  }
 
   filteredData['performance'][player2_id] = {
     pBRW: totalPlayerBRW,
