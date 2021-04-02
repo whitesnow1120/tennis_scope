@@ -1,29 +1,32 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { Helmet } from 'react-helmet';
+import { css } from '@emotion/core';
+import BounceLoader from 'react-spinners/BounceLoader';
 
 import CustomDatePicker from '../components/CustomDatePicker';
 import MatchItem from '../components/MatchItem';
 
 import { getHistoryData } from '../apis';
-import { GET_HISTORY_DATA } from '../store/actions/types';
-
 import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
 
 const History = () => {
-  const dispatch = useDispatch();
-  const { historyData, historyDate } = useSelector((state) => state.tennis);
+  const { historyDate } = useSelector((state) => state.tennis);
+  const [historyData, setHistoryData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const override = css`
+    display: block;
+    margin: 0 auto;
+    border-color: red;
+  `;
 
   useEffect(() => {
     const loadHistoryData = async () => {
       const response = await getHistoryData(historyDate);
       if (response.status === 200) {
-        dispatch({
-          type: GET_HISTORY_DATA,
-          payload: response.data,
-        });
+        setHistoryData(response.data);
       } else {
-        dispatch({ type: GET_HISTORY_DATA, payload: [] });
+        setHistoryData([]);
       }
       // Call the async function again
       setTimeout(function () {
@@ -42,6 +45,13 @@ const History = () => {
         <meta name="description" content={SITE_SEO_DESCRIPTION} />
         <meta property="og:description" content={SITE_SEO_DESCRIPTION} />
       </Helmet>
+      {loading && (
+        <div className="loading">
+          <div className="loader">
+            <BounceLoader loading={loading} css={override} size={100} />
+          </div>
+        </div>
+      )}
       <section className="section history">
         <div className="container-fluid">
           <div className="datepicker-container">
@@ -50,10 +60,17 @@ const History = () => {
           <div className="row mt-4">
             {historyData.length > 0 ? (
               historyData.map((item) => (
-                <MatchItem key={item.id} item={item} type="history" />
+                <MatchItem
+                  key={item.id}
+                  item={item}
+                  type="history"
+                  loading={loading}
+                  setLoading={setLoading}
+                />
               ))
             ) : (
-              <span className="no-result">There is no history data</span>
+              // <span className="no-result">There is no history data</span>
+              <></>
             )}
           </div>
         </div>

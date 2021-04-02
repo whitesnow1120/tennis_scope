@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
 
 import MatchItem from '../components/MatchItem';
 import { getInplayData } from '../apis';
-import { GET_INPLAY_DATA } from '../store/actions/types';
 import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
 
 const Inplay = () => {
-  const dispatch = useDispatch();
-  const { inplayData } = useSelector((state) => state.tennis);
+  const [inplayData, setInplayData] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const override = css`
     display: block;
     margin: 0 auto;
@@ -23,12 +21,9 @@ const Inplay = () => {
     const loadInplayData = async () => {
       const response = await getInplayData();
       if (response.status === 200) {
-        dispatch({
-          type: GET_INPLAY_DATA,
-          payload: response.data,
-        });
+        setInplayData(response.data);
       } else {
-        dispatch({ type: GET_INPLAY_DATA, payload: [] });
+        setInplayData([]);
       }
       // Call the async function again
       setTimeout(function () {
@@ -68,9 +63,7 @@ const Inplay = () => {
                 />
               ))
             ) : (
-              <div className="no-result col-12">
-                <span>There is no inplay data</span>
-              </div>
+              <></>
             )}
           </div>
         </div>

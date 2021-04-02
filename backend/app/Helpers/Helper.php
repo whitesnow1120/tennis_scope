@@ -553,7 +553,7 @@ class Helper {
     }
 
 	/**
-	 * 
+	 * Pre calculate matches for player1_id and player2 id
 	 */
 	public static function preCalculate($bucket_players_table, $player1_id, $player2_id, $history_tables, $players) {
 		$matches1_array = array();
@@ -857,17 +857,19 @@ class Helper {
 				curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 				$men_data = json_decode(curl_exec($curl), true);
 				// Store personal information into t_players table
-				foreach ($men_data["results"] as $men) {
-					DB::table("t_players")
-						->updateOrInsert(
-							["api_id" => (int)$men["id"]],
-							[
-								"name"    => $men["name"],
-								"gender"  => "m",
-								"ranking" => (int)$men["ranking"],
-								"api_id"  => (int)$men["id"],
-							]
-						);
+				if ($men_data != null) {
+					foreach ($men_data["results"] as $men) {
+						DB::table("t_players")
+							->updateOrInsert(
+								["api_id" => (int)$men["id"]],
+								[
+									"name"    => $men["name"],
+									"gender"  => "m",
+									"ranking" => (int)$men["ranking"],
+									"api_id"  => (int)$men["id"],
+								]
+							);
+					}
 				}
 
 				// Get ranking of Women
@@ -876,17 +878,19 @@ class Helper {
 				curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 				$women_data = json_decode(curl_exec($curl), true);
 				// Store personal information into t_players table
-				foreach ($women_data["results"] as $women) {
-					DB::table("t_players")
-						->updateOrInsert(
-							["api_id" => $women["id"]],
-							[
-								"name"    => $women["name"],
-								"gender"  => "w",
-								"ranking" => $women["ranking"],
-								"api_id"  => $women["id"],
-							]
-						);
+				if ($women_data != null) {
+					foreach ($women_data["results"] as $women) {
+						DB::table("t_players")
+							->updateOrInsert(
+								["api_id" => $women["id"]],
+								[
+									"name"    => $women["name"],
+									"gender"  => "w",
+									"ranking" => $women["ranking"],
+									"api_id"  => $women["id"],
+								]
+							);
+					}
 				}
       		}
       		$matches = array_merge($matches, $inplay);

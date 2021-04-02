@@ -4,12 +4,13 @@ import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
 
 import MatchItem from '../components/MatchItem';
-import { getUpcomingData } from '../apis';
+import { getTrigger1Data } from '../apis';
 import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
 
-const Upcoming = () => {
-  const [upcomingData, setUpcomingData] = useState([]);
+const Trigger1 = () => {
+  const [trigger1Data, setTrigger1Data] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const override = css`
     display: block;
     margin: 0 auto;
@@ -17,26 +18,26 @@ const Upcoming = () => {
   `;
 
   useEffect(() => {
-    const loadUpcomingData = async () => {
-      const response = await getUpcomingData();
+    const loadTrigger1Data = async () => {
+      const response = await getTrigger1Data();
       if (response.status === 200) {
-        setUpcomingData(response.data);
+        setTrigger1Data(response.data);
       } else {
-        setUpcomingData([]);
+        setTrigger1Data([]);
       }
       // Call the async function again
       setTimeout(function () {
-        loadUpcomingData();
+        loadTrigger1Data();
       }, 1000 * 60 * 10);
     };
 
-    loadUpcomingData();
+    loadTrigger1Data();
   }, []);
 
   return (
     <>
       <Helmet>
-        <title>{SITE_SEO_TITLE} : Upcoming</title>
+        <title>{SITE_SEO_TITLE} : Trigger1</title>
         <meta property="og:title" content={SITE_SEO_TITLE} />
         <meta name="description" content={SITE_SEO_DESCRIPTION} />
         <meta property="og:description" content={SITE_SEO_DESCRIPTION} />
@@ -48,23 +49,20 @@ const Upcoming = () => {
           </div>
         </div>
       )}
-      <section className="section upcoming">
+      <section className="section trigger">
         <div className="container-fluid">
           <div className="row mt-4">
-            {upcomingData.length > 0 ? (
-              upcomingData.map((item) => (
+            {trigger1Data.length > 0 ? (
+              trigger1Data.map((item) => (
                 <MatchItem
                   key={item.id}
                   item={item}
-                  type="upcoming"
+                  type="inplay"
                   loading={loading}
                   setLoading={setLoading}
                 />
               ))
             ) : (
-              // <div className="no-result col-12">
-              //   <span>There is no upcoming data</span>
-              // </div>
               <></>
             )}
           </div>
@@ -74,4 +72,4 @@ const Upcoming = () => {
   );
 };
 
-export default Upcoming;
+export default Trigger1;

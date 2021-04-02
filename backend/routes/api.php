@@ -21,4 +21,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('history', 'App\Http\Controllers\TennisController@history');
 Route::get('upcoming', 'App\Http\Controllers\TennisController@upComing');
 Route::get('inplay', 'App\Http\Controllers\TennisController@inplay');
+Route::get('trigger1', 'App\Http\Controllers\TennisController@trigger1');
 Route::get('relation', 'App\Http\Controllers\TennisController@relation');
+
+Route::post('user-signup', 'App\Http\Controllers\UserController@userSignUp');
+Route::post('user-login', 'App\Http\Controllers\UserController@userLogin');
+Route::get('user/{username}', 'App\Http\Controllers\UserController@userDetail');

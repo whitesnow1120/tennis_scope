@@ -516,9 +516,7 @@ p {
   border-radius: 4px;
 }
 
-.history .match-box,
-.upcoming .match-box,
-.inplay .match-box {
+.match-box {
   border: 2px solid #E8EAF2;
   background-color: #fff;
   padding-top: 10px;
@@ -539,9 +537,7 @@ p {
   border-radius: 4px;
 }
 
-.history .match-item .name,
-.upcoming .match-item .name,
-.inplay .match-item .name {
+.match-item .name {
   height: 45px;
   display: flex;
   align-items: center;
@@ -549,9 +545,7 @@ p {
   color: #474D5C;
 }
 
-.history .match-item .scores,
-.upcoming .match-item .scores,
-.inplay .match-item .scores {
+.match-item .scores {
   height: 45px;
   display: flex;
   align-items: center;
@@ -559,51 +553,39 @@ p {
   color: #7C859C;
 }
 
-.history .match-item .left,
-.upcoming .match-item .left,
-.inplay .match-item .left {
+.match-item .left {
   float:left;
   width: 33%;
   text-align: left;
 }
 
-.history .match-item .right,
-.upcoming .match-item .right,
-.inplay .match-item .right {
+.match-item .right {
   float:right;
   width: 33%;
   text-align: left;
 }
 
-.history .match-item .center,
-.upcoming .match-item .center,
-.inplay .match-item .center {
+.match-item .center {
   margin: 0 auto;
   width: 33%;
   text-align: center;
 }
 
-.history .match-item .sub-left,
-.upcoming .match-item .sub-left,
-.inplay .match-item .sub-left {
+.match-item .sub-left {
   float:left;
   width: 30%;
   text-align: center;
   color: #FFFFFF;
 }
 
-.history .match-item .sub-right,
-.upcoming .match-item .sub-right,
-.inplay .match-item .sub-right {
+.match-item .sub-right {
   float:right;
   width: 30%;
   text-align: center;
   color: #474D5C;
 }
 
-.history .match-item .sub-center,
-.upcoming .match-item .sub-center,
-.inplay .match-item .sub-center {
+.match-item .sub-center {
   margin: 0 auto;
   width: 30%;
   color: #7C859C;
@@ -611,27 +593,27 @@ p {
   text-align: center;
 }
 
-.inplay .match-item .scores .playing {
+.match-item .scores .playing {
   font-weight: bold;
 }
 
-.inplay .match-item .scores span {
+.match-item .scores span {
   margin-right: 5px;
 }
 
-.inplay .match-item .players-detail {
+.match-item .players-detail {
   padding-top: 35px;
   font-size: 12px;
 }
 
-.inplay .match-item .players-detail-surface {
+.match-item .players-detail-surface {
   display: flex;
   width: 100%;
   background-color: #BBC0D2;
   padding: 5px;
 }
 
-.inplay .match-item .players-detail-surface div {
+.match-item .players-detail-surface div {
   background-color: #F3F4F4;
   color: #7C859C;
   margin-right: 5px;
@@ -644,62 +626,62 @@ p {
   text-transform: uppercase;
 }
 
-.inplay .match-item .players-detail-surface .active,
-.inplay .match-item .rank-diff .active,
-.inplay .match-item .break-diff .active,
-.inplay .match-item .rank-opponent .active,
-.inplay .match-item .limit-count .active,
-.inplay .match-item .set .active {
+.match-item .players-detail-surface .active,
+.match-item .rank-diff .active,
+.match-item .break-diff .active,
+.match-item .rank-opponent .active,
+.match-item .limit-count .active,
+.match-item .set .active {
   background-color: #7C859C !important;
   color: #fff !important;
 }
 
-.inplay .match-item .compare-filters {
+.match-item .compare-filters {
   background-color: #E5E7EF;
   color: #7C859C;
   font-size: 12px;
   padding: 0 5px 5px 5px;
 }
 
-.inplay .match-item .vs {
+.match-item .vs {
   font-size: 13px;
   padding-top: 5px;
 }
 
-.inplay .match-item .compare-filters .left-box {
+.match-item .compare-filters .left-box {
   float: left;
   width: 33%;
   text-align: left;
   display: flex;
 }
 
-.inplay .match-item .compare-filters .right-box {
+.match-item .compare-filters .right-box {
   float: right;
   text-align: right;
   display: flex;
   
 }
 
-.inplay .match-item .compare-filters .center-box {
+.match-item .compare-filters .center-box {
   margin: 0 auto;
   width: 33%;
   text-align: center;
   display: flex;
 }
 
-.inplay .match-item .compare-filters .rank-diff,
-.inplay .match-item .compare-filters .break-diff,
-.inplay .match-item .compare-filters .rank-opponent,
-.inplay .match-item .compare-filters .limit-count,
-.inplay .match-item .player-detail,
-.inplay .match-item .set-percent {
+.match-item .compare-filters .rank-diff,
+.match-item .compare-filters .break-diff,
+.match-item .compare-filters .rank-opponent,
+.match-item .compare-filters .limit-count,
+.match-item .player-detail,
+.match-item .set-percent {
   display: flex;
 }
 
-.inplay .match-item .compare-filters .rank-diff div,
-.inplay .match-item .compare-filters .break-diff div,
-.inplay .match-item .compare-filters .rank-opponent div,
-.inplay .match-item .compare-filters .limit-count div{
+.match-item .compare-filters .rank-diff div,
+.match-item .compare-filters .break-diff div,
+.match-item .compare-filters .rank-opponent div,
+.match-item .compare-filters .limit-count div{
   background: #F3F4F4;
   margin-left: 5px;
   width: 40px;
@@ -710,7 +692,7 @@ p {
   padding-top: 1px;
 }
 
-.inplay .match-item .set {
+.match-item .set {
   display: flex;
   margin-top: 20px;
   text-align: center;
@@ -719,11 +701,11 @@ p {
   justify-content: space-between;
 }
 
-.inplay .match-item .set-title {
+.match-item .set-title {
   padding-top: 1px;
 }
 
-.inplay .match-item .set .set-all {
+.match-item .set .set-all {
   width: 40px;
   height: 20px;
   background: #F3F4F4;
@@ -731,11 +713,11 @@ p {
   margin-left: 5px;
 }
 
-.inplay .match-item .set .set-1,
-.inplay .match-item .set .set-2,
-.inplay .match-item .set .set-3,
-.inplay .match-item .set .set-4,
-.inplay .match-item .set .set-5 {
+.match-item .set .set-1,
+.match-item .set .set-2,
+.match-item .set .set-3,
+.match-item .set .set-4,
+.match-item .set .set-5 {
   width: 22px;
   height: 20px;
   background: #F3F4F4;
@@ -743,150 +725,150 @@ p {
   margin-left: 5px;
 }
 
-.inplay .match-item .set .set-left-box,
-.inplay .match-item .player-detail .player-detail-left,
-.inplay .match-item .set-percent .set-percent-left,
-.inplay .match-item .set-percent .percent-sub-left {
+.match-item .set .set-left-box,
+.match-item .player-detail .player-detail-left,
+.match-item .set-percent .set-percent-left,
+.match-item .set-percent .percent-sub-left {
   display: flex;
   float: left;
   width: calc(50% - 10px);
 }
 
-.inplay .match-item .set .set-right-box,
-.inplay .match-item .player-detail .player-detail-right,
-.inplay .match-item .set-percent .set-percent-right,
-.inplay .match-item .set-percent .percent-sub-right {
+.match-item .set .set-right-box,
+.match-item .player-detail .player-detail-right,
+.match-item .set-percent .set-percent-right,
+.match-item .set-percent .percent-sub-right {
   display: flex;
   width: calc(50% - 10px);
 }
 
-.inplay .match-item .match-details {
+.match-item .match-details {
   display: flex;
   justify-content: space-between;
 }
 
-.inplay .match-item .match-details .match-details-left {
+.match-item .match-details .match-details-left {
   float: left;
   width: calc(50% - 10px);
   display: block;
 }
 
-.inplay .match-item .match-details .match-details-right {
+.match-item .match-details .match-details-right {
   display: block;
   width: calc(50% - 10px);
 }
 
-.inplay .match-item .set-percent .percent-sub-left,
-.inplay .match-item .set-percent .percent-sub-right {
+.match-item .set-percent .percent-sub-left,
+.match-item .set-percent .percent-sub-right {
   display: block;
   padding: 10px 10px 10px 0;
   border-top: 1px solid #E8EAF2;
   border-bottom: 1px solid #E8EAF2;
 }
 
-.inplay .match-item .player-detail,
-.inplay .match-item .set-percent {
+.match-item .player-detail,
+.match-item .set-percent {
   margin-top: 10px;
   font-size: 12px;
   line-height: 15px;
   justify-content: space-between;
 }
 
-.inplay .match-item .set-percent span {
+.match-item .set-percent span {
   margin-right: 5px;
 }
 
-.inplay .match-item .set-percent span:nth-child(1),
-.inplay .match-item .set-percent span:nth-child(3) {
+.match-item .set-percent span:nth-child(1),
+.match-item .set-percent span:nth-child(3) {
   font-weight: 500;
   color: #7C859C;
 }
 
-.inplay .match-item .set-percent .percent-sub-left span:nth-child(2) {
+.match-item .set-percent .percent-sub-left span:nth-child(2) {
   font-weight: bold;
   color: #53AA0B;
 }
 
-.inplay .match-item .set-percent .percent-sub-right span:nth-child(2) {
+.match-item .set-percent .percent-sub-right span:nth-child(2) {
   font-weight: bold;
   color: #D54E45;
 }
 
-.inplay .match-item .set-percent .lose-win,
-.inplay .match-item .set-percent .lose-lose {
+.match-item .set-percent .lose-win,
+.match-item .set-percent .lose-lose {
   margin-top: 10px;
 }
 
-.inplay .match-item .break-hold-detail span:nth-child(2) {
+.match-item .break-hold-detail span:nth-child(2) {
   margin-left: 5px;
 }
-.inplay .match-item .player-detail .break-hold-detail {
+.match-item .player-detail .break-hold-detail {
   display: flex;
   font-size: 12px;
   line-height: 15px;
 }
 
-.inplay .match-item .player-detail .break-hold-detail div {
+.match-item .player-detail .break-hold-detail div {
   margin-right: 10px;
 }
 
-.inplay .match-item .breaks-won span:nth-child(1),
-.inplay .match-item .breaks-lost span:nth-child(1),
-.inplay .match-item .games-hold span:nth-child(1) {
+.match-item .breaks-won span:nth-child(1),
+.match-item .breaks-lost span:nth-child(1),
+.match-item .games-hold span:nth-child(1) {
   font-weight: 500;
   color: #7C859C;
 }
 
-.inplay .match-item .breaks-won span:nth-child(2){
+.match-item .breaks-won span:nth-child(2){
   font-weight: bold;
   color: #53AA0B;
 }
 
-.inplay .match-item .breaks-lost span:nth-child(2){
+.match-item .breaks-lost span:nth-child(2){
   font-weight: bold;
   color: #D54E45;
 }
 
-.inplay .match-item .games-hold span:nth-child(2){
+.match-item .games-hold span:nth-child(2){
   font-weight: bold;
   color: #474D5C;
 }
 
-.inplay .match-item .match-detail {
+.match-item .match-detail {
   margin-top: 10px;
 }
  
-.inplay .match-item .match-detail .opponent-detail,
-.inplay .match-item .match-detail .match-sets,
-.inplay .match-item .match-detail .opponent-detail .break-hold-detail {
+.match-item .match-detail .opponent-detail,
+.match-item .match-detail .match-sets,
+.match-item .match-detail .opponent-detail .break-hold-detail {
   display: flex;
 }
 
-.inplay .match-item .match-detail .opponent-detail {
+.match-item .match-detail .opponent-detail {
   justify-content: space-between;
 }
 
-.inplay .match-item .match-detail .opponent-detail .break-hold-detail {
+.match-item .match-detail .opponent-detail .break-hold-detail {
   justify-content: space-between;
   width: 100%;
 }
 
-.inplay .match-item .match-detail .opponent-detail .break-hold-detail .opponent-ranking,
-.inplay .match-item .match-detail .opponent-detail .break-hold-detail .breaks-won,
-.inplay .match-item .match-detail .opponent-detail .break-hold-detail .breaks-lost,
-.inplay .match-item .match-detail .opponent-detail .break-hold-detail .games-hold {
+.match-item .match-detail .opponent-detail .break-hold-detail .opponent-ranking,
+.match-item .match-detail .opponent-detail .break-hold-detail .breaks-won,
+.match-item .match-detail .opponent-detail .break-hold-detail .breaks-lost,
+.match-item .match-detail .opponent-detail .break-hold-detail .games-hold {
   width: calc(25% - 5px);
   text-align: center;
   padding-bottom: 2px;
   padding-top: 2px;
 }
 
-.inplay .match-item .match-detail .opponent-detail .break-hold-detail .opponent-ranking {
+.match-item .match-detail .opponent-detail .break-hold-detail .opponent-ranking {
   color: #fff;
   background-color: #474D5C;
 }
 
-.inplay .match-item .match-detail .match-sets {
+.match-item .match-detail .match-sets {
   text-align: center;
   justify-content: space-between;
   font-weight: bold;
@@ -894,12 +876,12 @@ p {
   padding-top: 5px;
 }
 
-.inplay .match-item .match-detail .match-sets-score div:nth-child(1) {
+.match-item .match-detail .match-sets-score div:nth-child(1) {
   padding-top: 2px;
   padding-bottom: 2px;
 }
 
-.inplay .match-item .match-detail .match-sets-score div:nth-child(2) {
+.match-item .match-detail .match-sets-score div:nth-child(2) {
   color: #474D5C;
   padding-top: 5px;
 }
@@ -927,23 +909,23 @@ p {
   position: relative;
 }
 
-.inplay .match-item .match-detail .match-sets-score-1 {
+.match-item .match-detail .match-sets-score-1 {
   width: 100%;
 }
 
-.inplay .match-item .match-detail .match-sets-score-2 {
+.match-item .match-detail .match-sets-score-2 {
   width: calc((100% - 2px) / 2);
 }
 
-.inplay .match-item .match-detail .match-sets-score-3 {
+.match-item .match-detail .match-sets-score-3 {
   width: calc((100% - 4px) / 3);
 }
 
-.inplay .match-item .match-detail .match-sets-score-4 {
+.match-item .match-detail .match-sets-score-4 {
   width: calc((100% - 6px) / 4);
 }
 
-.inplay .match-item .match-detail .match-sets-score-5 {
+.match-item .match-detail .match-sets-score-5 {
   width: calc((100% - 8px) / 5);
 }
 
@@ -955,8 +937,7 @@ p {
   background-color: #D54E46;
 }
 
-.upcoming .match-item .ranking,
-.inplay .match-item .ranking {
+.match-item .ranking {
   background-color: #474D5C;
 }
 
@@ -1871,7 +1852,6 @@ p {
 .opponent-tooltip-content span {
   display: block;
   font-size: 13px;
-  font-weight: bold;
   margin: 5px;
 }
 .e-tooltip-wrap.e-popup {
@@ -1896,5 +1876,34 @@ p {
 .e-tooltip-wrap.e-popup > div:nth-child(2){
   top: 71px !important;
   height: 10px !important;
+}
+.login {
+  width:30%;
+  left: 35%;
+  top: 30%;
+  position: absolute;
+}
+.login-containers {
+  background-color: #F9FAFC;
+  padding: 20px 40px;
+  color: #3c4858;
+  font-weight: 600;
+  box-shadow: 7px -8px 11px -5px rgba(#195190FF);
+}
+.signUp, .signIn{
+  background-color: #F9FAFC;
+  width:50%;
+  font-size: 22px;
+  color: #3c4858;
+  padding: 10px;
+  text-align: center;
+}
+.signIn:hover, .signUp:hover {
+  text-decoration: none;
+  color: #3c4858;
+}
+.activeLink {
+  color: #3c4858;
+  background-color: #195190FF;
 }
 /*# sourceMappingURL=style.css.map */
