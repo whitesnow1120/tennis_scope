@@ -499,6 +499,10 @@ p {
   padding-left: 10px;
 }
 
+.new-trigger-box {
+  border: 2px solid #89d46a !important;
+}
+
 .history .row,
 .footer .row,
 .upcoming .row,

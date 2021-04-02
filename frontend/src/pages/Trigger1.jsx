@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useSound from 'use-sound';
 import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
@@ -6,10 +7,13 @@ import BounceLoader from 'react-spinners/BounceLoader';
 import MatchItem from '../components/MatchItem';
 import { getTrigger1Data } from '../apis';
 import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
+import ding from '../assets/ding.mp3';
 
 const Trigger1 = () => {
+  const [play] = useSound(ding, { interrupt: true });
   const [trigger1Data, setTrigger1Data] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [newEventIds, setNewEventIds] = useState([]);
 
   const override = css`
     display: block;
@@ -21,6 +25,21 @@ const Trigger1 = () => {
     const loadTrigger1Data = async () => {
       const response = await getTrigger1Data();
       if (response.status === 200) {
+        // check new trigger data
+        const data = response.data;
+        // old trigger data event ids
+        const oldEventIds = trigger1Data.map((item) => {
+          return item['event_id'];
+        });
+        const newTrigger1EventIds = data.map((item) => {
+          if (!oldEventIds.includes(item['event_id'])) {
+            return item['event_id'];
+          }
+        });
+        if (newTrigger1EventIds.length > 0) {
+          play();
+        }
+        setNewEventIds(newTrigger1EventIds);
         setTrigger1Data(response.data);
       } else {
         setTrigger1Data([]);
@@ -57,7 +76,8 @@ const Trigger1 = () => {
                 <MatchItem
                   key={item.id}
                   item={item}
-                  type="inplay"
+                  type="trigger1"
+                  newIds={newEventIds}
                   loading={loading}
                   setLoading={setLoading}
                 />

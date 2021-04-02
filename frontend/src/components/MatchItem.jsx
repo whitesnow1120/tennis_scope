@@ -17,7 +17,7 @@ import FilterLimit from './InplayDetail/FilterLimit';
 import PlayerDetail from './InplayDetail/PlayerDetail';
 
 const MatchItem = (props) => {
-  const { item, type, loading, setLoading } = props;
+  const { item, type, loading, setLoading, newIds } = props;
   const dispatch = useDispatch();
   const { relationData, openedDetail } = useSelector((state) => state.tennis);
 
@@ -29,6 +29,10 @@ const MatchItem = (props) => {
   const [selectedLimit, setSelectedLimit] = useState(10);
   const [selectedSet1, setSelectedSet1] = useState('ALL');
   const [selectedSet2, setSelectedSet2] = useState('ALL');
+  const newBox =
+    type === 'trigger1' && newIds.includes(item['event_id'])
+      ? 'match-box new-trigger-box'
+      : 'match-box';
 
   const player = getWinner(item.scores);
   const datetime = formatDateTime(item.time);
@@ -136,7 +140,7 @@ const MatchItem = (props) => {
 
   return (
     <div className="col-lg-4 col-md-6 col-sm-6 col-xs-12 mb-2 pb-2 pt-2 match-item">
-      <div className="match-box">
+      <div className={newBox}>
         <div onClick={handleMatchClicked}>
           <div className="left">
             <div className="name">
@@ -192,7 +196,7 @@ const MatchItem = (props) => {
           </div>
           <div className="center">
             <div className="scores">
-              {type === 'inplay' &&
+              {(type === 'inplay' || type === 'trigger1') &&
                 scores.map((score, index) => (
                   <span
                     key={index}
@@ -211,7 +215,7 @@ const MatchItem = (props) => {
             <div className="match-time">
               {type === 'history' && <span>-</span>}
               {type === 'upcoming' && <span>{datetime[1]}</span>}
-              {type === 'inplay' && <span>-</span>}
+              {(type === 'inplay' || type === 'trigger1') && <span>-</span>}
             </div>
           </div>
         </div>
@@ -290,6 +294,7 @@ MatchItem.propTypes = {
   type: PropTypes.string,
   loading: PropTypes.bool,
   setLoading: PropTypes.func,
+  newIds: PropTypes.array,
 };
 
 export default MatchItem;
