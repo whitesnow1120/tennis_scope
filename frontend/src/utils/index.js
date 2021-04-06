@@ -67,6 +67,9 @@ export const sortByTime = (data, player1_id, player2_id) => {
 
 export const filterData = (player1_id, player2_id, relationData, filters) => {
   let filteredData = { ...relationData };
+  const filterSet1 = filters['set1'];
+  const filterSet2 = filters['set2'];
+
   // filtering by surface
   if (filters['surface'] != 'ALL') {
     filteredData[player1_id] = filteredData[player1_id].filter(
@@ -141,6 +144,22 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     }); // Sort youngest first
   }
 
+  // filtering by sets
+  if (filterSet1 !== 'ALL') {
+    filteredData[player1_id] = filteredData[player1_id].filter(
+      (item) =>
+        item['scores'] != '' &&
+        item['scores'].split(',').length >= parseInt(filterSet1)
+    );
+  }
+  if (filterSet2 !== 'ALL') {
+    filteredData[player2_id] = filteredData[player2_id].filter(
+      (item) =>
+        item['scores'] != '' &&
+        item['scores'].split(',').length >= parseInt(filterSet2)
+    );
+  }
+
   // filtering by HIR, LOR
   let filterRankingPlayer1 = [];
   let filterRankingPlayer2 = [];
@@ -170,10 +189,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     filterRankingPlayer2 = filteredData[player2_id];
   }
 
-  // calculate BRW, BRL and GAH
+  // calculate BRW, BRL, GAH, and GRA
   const filterLimit = filters['limit'];
-  const filterSet1 = filters['set1'];
-  const filterSet2 = filters['set2'];
 
   // -- player1
   filteredData[player1_id] = [];
@@ -181,6 +198,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   let totalPlayerBRW = 0;
   let totalPlayerBRL = 0;
   let totalPlayerGAH = 0;
+  let totalPlayerGRA = [];
   let ww = 0;
   let wl = 0;
   let lw = 0;
@@ -195,6 +213,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     const pBRW = JSON.parse(item['p_brw']);
     const pBRL = JSON.parse(item['p_brl']);
     const pGAH = JSON.parse(item['p_gah']);
+    const pDepth = JSON.parse(item['p_depths']);
     let sumBRW = 0;
     let sumBRL = 0;
     let sumGAH = 0;
@@ -203,6 +222,9 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         sumBRW += pBRW[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
         sumBRL += pBRL[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
         sumGAH += pGAH[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
+        if (pDepth[j] !== 0) {
+          totalPlayerGRA.push(pDepth[j]);
+        }
       }
     } else {
       sumBRW += pBRW[parseInt(filterSet1) - 1].reduce(
@@ -217,6 +239,10 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         (a, b) => parseInt(a) + parseInt(b),
         0
       );
+      let depth = pDepth[parseInt(filterSet1) - 1];
+      if (depth !== 0) {
+        totalPlayerGRA.push(depth);
+      }
     }
     totalPlayerBRW += sumBRW;
     totalPlayerBRL += sumBRL;
@@ -256,10 +282,16 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     }
   }
 
+  let sumGRA = totalPlayerGRA.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+  let pGRA =
+    totalPlayerGRA.length > 0
+      ? (sumGRA / totalPlayerGRA.length).toFixed(2)
+      : '0';
   filteredData['performance'][player1_id] = {
     pBRW: totalPlayerBRW,
     pBRL: totalPlayerBRL,
     pGAH: totalPlayerGAH,
+    pGRA: pGRA,
     pWW: ww,
     pWL: wl,
     pLW: lw,
@@ -272,6 +304,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   totalPlayerBRW = 0;
   totalPlayerBRL = 0;
   totalPlayerGAH = 0;
+  totalPlayerGRA = [];
   ww = 0;
   wl = 0;
   lw = 0;
@@ -284,6 +317,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     const pBRW = JSON.parse(item['p_brw']);
     const pBRL = JSON.parse(item['p_brl']);
     const pGAH = JSON.parse(item['p_gah']);
+    const pDepth = JSON.parse(item['p_depths']);
     let sumBRW = 0;
     let sumBRL = 0;
     let sumGAH = 0;
@@ -292,6 +326,9 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         sumBRW += pBRW[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
         sumBRL += pBRL[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
         sumGAH += pGAH[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
+        if (pDepth[j] !== 0) {
+          totalPlayerGRA.push(pDepth[j]);
+        }
       }
     } else {
       sumBRW += pBRW[parseInt(filterSet2) - 1].reduce(
@@ -306,6 +343,10 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         (a, b) => parseInt(a) + parseInt(b),
         0
       );
+      const depth = pDepth[parseInt(filterSet2) - 1];
+      if (depth !== 0) {
+        totalPlayerGRA.push(depth);
+      }
     }
     totalPlayerBRW += sumBRW;
     totalPlayerBRL += sumBRL;
@@ -345,10 +386,16 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     }
   }
 
+  sumGRA = totalPlayerGRA.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+  pGRA =
+    totalPlayerGRA.length > 0
+      ? (sumGRA / totalPlayerGRA.length).toFixed(2)
+      : '0';
   filteredData['performance'][player2_id] = {
     pBRW: totalPlayerBRW,
     pBRL: totalPlayerBRL,
     pGAH: totalPlayerGAH,
+    pGRA: pGRA,
     pWW: ww,
     pWL: wl,
     pLW: lw,

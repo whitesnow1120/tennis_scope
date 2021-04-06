@@ -12,9 +12,11 @@ const PlayerDetail = (props) => {
   const [player1BRW, setPlayer1BRW] = useState(0);
   const [player1BRL, setPlayer1BRL] = useState(0);
   const [player1GAH, setPlayer1GAH] = useState(0);
+  const [player1GRA, setPlayer1GRA] = useState('0');
   const [player2BRW, setPlayer2BRW] = useState(0);
   const [player2BRL, setPlayer2BRL] = useState(0);
   const [player2GAH, setPlayer2GAH] = useState(0);
+  const [player2GRA, setPlayer2GRA] = useState('0');
 
   useEffect(() => {
     if (
@@ -25,6 +27,7 @@ const PlayerDetail = (props) => {
       setPlayer1BRW(filteredRelationData['performance'][player1_id]['pBRW']);
       setPlayer1BRL(filteredRelationData['performance'][player1_id]['pBRL']);
       setPlayer1GAH(filteredRelationData['performance'][player1_id]['pGAH']);
+      setPlayer1GRA(filteredRelationData['performance'][player1_id]['pGRA']);
     }
 
     if (
@@ -35,6 +38,7 @@ const PlayerDetail = (props) => {
       setPlayer2BRW(filteredRelationData['performance'][player2_id]['pBRW']);
       setPlayer2BRL(filteredRelationData['performance'][player2_id]['pBRL']);
       setPlayer2GAH(filteredRelationData['performance'][player2_id]['pGAH']);
+      setPlayer2GRA(filteredRelationData['performance'][player2_id]['pGRA']);
     }
   }, [filteredRelationData]);
 
@@ -46,7 +50,7 @@ const PlayerDetail = (props) => {
             brw={player1BRW}
             brl={player1BRL}
             gah={player1GAH}
-            player={true}
+            gra={player1GRA}
           />
         </div>
         <div className="player-detail-right">
@@ -54,7 +58,7 @@ const PlayerDetail = (props) => {
             brw={player2BRW}
             brl={player2BRL}
             gah={player2GAH}
-            player={true}
+            gra={player2GRA}
           />
         </div>
       </div>

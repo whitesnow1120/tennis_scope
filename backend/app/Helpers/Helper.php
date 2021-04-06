@@ -33,7 +33,7 @@ class Helper {
 	public static function importHistoryData($start_date=NULL) {
     	$start = microtime(true);
     	if (!$start_date) {
-      		$start_date = "20190508";
+      		$start_date = "20191120";
     	}
     	$period = new DatePeriod(
 			new DateTime($start_date),
@@ -102,11 +102,14 @@ class Helper {
 			$score_count[$j] = 0;
 
 			foreach ($set_scores as $set_score) {
+				$m = 0; // won count index
 				$ww = 0; // (2:0)  => (6:4)
 				$wl = 0; // (2:0)  => (4:6)
 				$lw = 0; // (0:2)  => (6:4)
 				$ll = 0; // (0:2)  => (4:6)
 
+				$won_counts = array();
+				$won_counts[$m] = 0;
 				$player_scores = array();
 				$opponent_scores = array();
 				$player_scores[0] = 0;
@@ -154,6 +157,8 @@ class Helper {
 											} else {
 												$sets[$i]["sets"][$j]["gah"][$game] ++;
 											}
+											// add won counts of the set
+											$won_counts[$m] ++;
 											// add score for depth
 											$player_scores[$score_cnt + 1] = $player_scores[$score_cnt] + 1;
 											$opponent_scores[$score_cnt + 1] = $opponent_scores[$score_cnt];
@@ -161,6 +166,9 @@ class Helper {
 											if ($set_details[1] == "b") {
 												$sets[$i]["sets"][$j]["brl"][$game] ++;
 											}
+											// add index of won counts array
+											$m ++;
+											$won_counts[$m] = 0;
 											// add score for depth
 											$opponent_scores[$score_cnt + 1] = $opponent_scores[$score_cnt] + 1;
 											$player_scores[$score_cnt + 1] = $player_scores[$score_cnt];
@@ -171,22 +179,8 @@ class Helper {
 							}
 						}
 
-						// calculate the depth
-						$depths = array();
-						$depths[0] = 0;
-						for ($n = 1; $n < $score_cnt + 1; $n ++) {
-							if ($player_scores[$n] == 6 || $opponent_scores[$n] == 6) {
-								break;
-							} else {
-								$depths[$n] = $player_scores[$n] - $opponent_scores[$n];
-							}
-						}
-						if ($player_score > $opponent_score) {
-							$depth = max($depths);
-						} else {
-							$depth = min($depths);
-						}
-						$sets[$i]["sets"][$j]["depth"] = $depth;
+						
+						$sets[$i]["sets"][$j]["depth"] = max($won_counts);
 
 						// set performance
 						for ($n = 0; $n < $score_cnt; $n ++) {
@@ -671,7 +665,6 @@ class Helper {
 			// get event ids of current date
 			$d = substr($date, 0, 4) . "-" . substr($date, 4, 2) . "-" . substr($date, 6, 2);
 			$times = Helper::getTimePeriod($d);
-			echo "time[0]: " . $times[0] . "   time[1]: " . $times[1] . "\n";
 			$db_events = DB::table($match_table_name)
 							->select("event_id")
 							->whereBetween('time', [$times[0], $times[1]])
@@ -829,7 +822,7 @@ class Helper {
 			curl_setopt($curl, CURLOPT_URL, $url);
 			curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 			$view = json_decode(curl_exec($curl), true);
-			if (array_key_exists("results", $view) && count($view["results"]) > 0 && $view["results"][0]["id"] == $event_id) {
+			if ($view != NULL && array_key_exists("results", $view) && count($view["results"]) > 0 && $view["results"][0]["id"] == $event_id) {
 				$event = $view["results"][0];
 				if ($event != NULL && array_key_exists("home", $event) && (array_key_exists("away", $event) || array_key_exists("o_away", $event))) {
 					$time_status = (int)$event["time_status"];
@@ -966,7 +959,7 @@ class Helper {
 		$log .= ("  End Time: " . date("Y-m-d H:i:s"));
 		$log .= ("  ===>  Total History Count: " . $history_total_count . ", Execution Time:  " . $execution_time. " secs, Request Count: " . $request_count . "\n");
 		echo $log;
-		file_put_contents("log.txt", $log, FILE_APPEND | LOCK_EX);
+		// file_put_contents("log.txt", $log, FILE_APPEND | LOCK_EX);
 		curl_close($curl);
 	}
 }

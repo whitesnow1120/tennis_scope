@@ -895,7 +895,7 @@ p {
 }
 
 .match-item .match-detail {
-  margin-top: 10px;
+  margin-top: 15px;
 }
 
 .match-item .match-detail .opponent-detail,
@@ -913,7 +913,7 @@ p {
   width: 100%;
 }
 
-.match-item .match-detail .opponent-detail .break-hold-detail .opponent-ranking,
+.match-item .opponent-sub-detail .tooltip-box,
 .match-item .match-detail .opponent-detail .break-hold-detail .breaks-won,
 .match-item .match-detail .opponent-detail .break-hold-detail .breaks-lost,
 .match-item .match-detail .opponent-detail .break-hold-detail .games-hold {
@@ -926,10 +926,58 @@ p {
 .match-item
   .match-detail
   .opponent-detail
-  .break-hold-detail
   .opponent-ranking {
   color: #fff;
   background-color: #474d5c;
+  width: 100%;
+}
+
+.match-item .opponent-sub-detail {
+  justify-content: space-between;
+  width: 100%;
+  display: flex;
+}
+
+.match-item .opponent-sub-detail .player-odd,
+.match-item .opponent-sub-detail .opponent-raw,
+.match-item .opponent-sub-detail .opponent-ral {
+  width: calc(25% - 5px);
+}
+
+.match-item .opponent-sub-detail .player-odd {
+  text-align: center;
+}
+
+.match-item .opponent-sub-detail .player-odd,
+.match-item .opponent-sub-detail .opponent-raw,
+.match-item .opponent-sub-detail .opponent-ral {
+  padding-top: 2px;
+}
+
+.match-item .opponent-sub-detail span {
+  color: #474d5c;
+  font-weight: 500;
+}
+
+.match-item .opponent-sub-detail .player-odd span {
+  margin-left: -20px;
+  font-weight: 700 !important;
+  color: #474d5c;
+}
+
+.match-item .opponent-sub-detail .opponent-raw span:nth-child(2),
+.match-item .opponent-sub-detail .opponent-ral span:nth-child(2) {
+  padding-left: 4px;
+}
+
+
+.match-item .opponent-sub-detail .opponent-ral {
+  text-align: right;
+}
+
+.match-item .opponent-sub-detail .opponent-ranking span {
+  color: #fff !important;
+  font-weight: 500 !important;
 }
 
 .match-item .match-detail .match-sets {
@@ -937,7 +985,7 @@ p {
   justify-content: space-between;
   font-weight: bold;
   color: #ffffff;
-  padding-top: 5px;
+  padding: 0;
 }
 
 .match-item .match-detail .match-sets-score div:nth-child(1) {
@@ -2011,7 +2059,6 @@ p {
 }
 
 .tooltip-box {
-  width: 100%;
   display: block;
 }
 

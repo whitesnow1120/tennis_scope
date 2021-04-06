@@ -3,7 +3,7 @@ import { TooltipComponent } from '@syncfusion/ej2-react-popups';
 import PropTypes from 'prop-types';
 
 import { formatDateTime } from '../../utils';
-import BreakHoldDetail from './BreakHoldDetail';
+import OpponentDetail from './OpponentDetail';
 
 const MatchDetail = (props) => {
   const { match } = props;
@@ -11,10 +11,15 @@ const MatchDetail = (props) => {
   const [opponentRank, setOpponentRank] = useState('-');
   const [scores, setScores] = useState([]);
   const [depths, setDepths] = useState([]);
+  const [totalDepths, setTotalDepths] = useState(0);
+  const [playerOdd, setPlayerOdd] = useState('-');
   const [tooltipContent, setToolTipContent] = useState('');
 
   useEffect(() => {
     if (match != undefined) {
+      setPlayerOdd(
+        match['p_odd'] === null ? '-' : parseFloat(match['p_odd']).toFixed(2)
+      );
       const matchDate = formatDateTime(match.time);
       let content = `<div class='opponent-tooltip-content'><span>${matchDate[0]}</span>`;
       content += `<span>${match['o_name']}</span>`;
@@ -28,12 +33,8 @@ const MatchDetail = (props) => {
       setScores(allScores);
       setOpponentRank(match['o_ranking'] === null ? '-' : match['o_ranking']);
       const depth = JSON.parse(match['p_depths']);
-      const sumDepth = depth.reduce((a, b) => parseInt(a) + parseInt(b), 0);
-      if (sumDepth !== 0) {
-        setDepths(JSON.parse(match['p_depths']));
-      } else {
-        setDepths('-');
-      }
+      setDepths(depth);
+      setTotalDepths(depth.reduce((a, b) => parseInt(a) + parseInt(b), 0));
 
       // count of sets
       switch (allScores.length) {
@@ -82,7 +83,7 @@ const MatchDetail = (props) => {
     <>
       <div className="match-detail">
         <div className="opponent-detail">
-          <BreakHoldDetail player={false}>
+          <OpponentDetail playerOdd={playerOdd}>
             <TooltipComponent
               className="tooltip-box"
               content={tooltipContent}
@@ -95,7 +96,7 @@ const MatchDetail = (props) => {
                 </div>
               </div>
             </TooltipComponent>
-          </BreakHoldDetail>
+          </OpponentDetail>
         </div>
         <div className="match-sets">
           {scores.length > 0 &&
@@ -105,13 +106,7 @@ const MatchDetail = (props) => {
                   <span>{score}</span>
                 </div>
                 <div>
-                  <span>
-                    {depths === '-'
-                      ? '-'
-                      : depths[index] > 0
-                      ? '+' + depths[index]
-                      : depths[index]}
-                  </span>
+                  <span>{totalDepths === 0 ? '-' : depths[index]}</span>
                 </div>
               </div>
             ))}
