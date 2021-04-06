@@ -56,6 +56,15 @@ export const formatDateTime = (timestamp) => {
   return [date, time];
 };
 
+export const sortByTime = (data, player1_id, player2_id) => {
+  data[player1_id].sort(function (a, b) {
+    return b['time'] - a['time'];
+  }); // Sort biggest first
+  data[player2_id].sort(function (a, b) {
+    return b['time'] - a['time'];
+  }); // Sort biggest first
+};
+
 export const filterData = (player1_id, player2_id, relationData, filters) => {
   let filteredData = { ...relationData };
   // filtering by surface
@@ -176,6 +185,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   let wl = 0;
   let lw = 0;
   let ll = 0;
+  let raw = [];
+  let ral = [];
   let limitCnt = 0;
   filteredData['performance'] = {};
 
@@ -207,28 +218,39 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         0
       );
     }
-    if (!(sumBRW == 0 && sumBRL == 0 && sumGAH == 0)) {
-      totalPlayerBRW += sumBRW;
-      totalPlayerBRL += sumBRL;
-      totalPlayerGAH += sumGAH;
-      const pWW = JSON.parse(item['p_ww']);
-      const pWL = JSON.parse(item['p_wl']);
-      const pLW = JSON.parse(item['p_lw']);
-      const pLL = JSON.parse(item['p_ll']);
-      if (filterSet1 === 'ALL') {
-        ww += pWW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
-        wl += pWL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
-        lw += pLW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
-        ll += pLL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
-      } else {
-        ww += parseInt(pWW[parseInt(filterSet1) - 1]);
-        wl += parseInt(pWL[parseInt(filterSet1) - 1]);
-        lw += parseInt(pLW[parseInt(filterSet1) - 1]);
-        ll += parseInt(pLL[parseInt(filterSet1) - 1]);
-      }
-      filteredData[player1_id].push(item);
-      limitCnt++;
+    totalPlayerBRW += sumBRW;
+    totalPlayerBRL += sumBRL;
+    totalPlayerGAH += sumGAH;
+    const pWW = JSON.parse(item['p_ww']);
+    const pWL = JSON.parse(item['p_wl']);
+    const pLW = JSON.parse(item['p_lw']);
+    const pLL = JSON.parse(item['p_ll']);
+    const oRanking = item['o_ranking'] === null ? 501 : item['o_ranking'];
+
+    const totalWW = pWW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+    const totalLW = pLW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+    const totalWL = pWL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+    const totalLL = pLL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+    if (totalWW + totalLW >= totalWL + totalLL) {
+      raw.push(oRanking);
+    } else {
+      ral.push(oRanking);
     }
+
+    if (filterSet1 === 'ALL') {
+      ww += totalWW;
+      wl += totalLW;
+      lw += totalWL;
+      ll += totalLL;
+    } else {
+      ww += parseInt(pWW[parseInt(filterSet1) - 1]);
+      wl += parseInt(pWL[parseInt(filterSet1) - 1]);
+      lw += parseInt(pLW[parseInt(filterSet1) - 1]);
+      ll += parseInt(pLL[parseInt(filterSet1) - 1]);
+    }
+
+    filteredData[player1_id].push(item);
+    limitCnt++;
     if (limitCnt === filterLimit) {
       break;
     }
@@ -242,6 +264,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     pWL: wl,
     pLW: lw,
     pLL: ll,
+    RAW: raw,
+    RAL: ral,
   };
 
   // -- player2
@@ -252,6 +276,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   wl = 0;
   lw = 0;
   ll = 0;
+  raw = [];
+  ral = [];
   limitCnt = 0;
   for (let i = 0; i < filterRankingPlayer2.length; i++) {
     const item = filterRankingPlayer2[i];
@@ -281,28 +307,39 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         0
       );
     }
-    if (!(sumBRW == 0 && sumBRL == 0 && sumGAH == 0)) {
-      totalPlayerBRW += sumBRW;
-      totalPlayerBRL += sumBRL;
-      totalPlayerGAH += sumGAH;
-      const pWW = JSON.parse(item['p_ww']);
-      const pWL = JSON.parse(item['p_wl']);
-      const pLW = JSON.parse(item['p_lw']);
-      const pLL = JSON.parse(item['p_ll']);
-      if (filterSet2 === 'ALL') {
-        ww += pWW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
-        wl += pWL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
-        lw += pLW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
-        ll += pLL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
-      } else {
-        ww += parseInt(pWW[parseInt(filterSet2) - 1]);
-        wl += parseInt(pWL[parseInt(filterSet2) - 1]);
-        lw += parseInt(pLW[parseInt(filterSet2) - 1]);
-        ll += parseInt(pLL[parseInt(filterSet2) - 1]);
-      }
-      filteredData[player2_id].push(item);
-      limitCnt++;
+    totalPlayerBRW += sumBRW;
+    totalPlayerBRL += sumBRL;
+    totalPlayerGAH += sumGAH;
+    const pWW = JSON.parse(item['p_ww']);
+    const pWL = JSON.parse(item['p_wl']);
+    const pLW = JSON.parse(item['p_lw']);
+    const pLL = JSON.parse(item['p_ll']);
+    const oRanking = item['o_ranking'] === null ? 501 : item['o_ranking'];
+
+    const totalWW = pWW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+    const totalLW = pLW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+    const totalWL = pWL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+    const totalLL = pLL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+    if (totalWW + totalLW >= totalWL + totalLL) {
+      raw.push(oRanking);
+    } else {
+      ral.push(oRanking);
     }
+
+    if (filterSet2 === 'ALL') {
+      ww += totalWW;
+      wl += totalLW;
+      lw += totalWL;
+      ll += totalLL;
+    } else {
+      ww += parseInt(pWW[parseInt(filterSet2) - 1]);
+      wl += parseInt(pWL[parseInt(filterSet2) - 1]);
+      lw += parseInt(pLW[parseInt(filterSet2) - 1]);
+      ll += parseInt(pLL[parseInt(filterSet2) - 1]);
+    }
+
+    filteredData[player2_id].push(item);
+    limitCnt++;
     if (limitCnt === filterLimit) {
       break;
     }
@@ -316,6 +353,47 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     pWL: wl,
     pLW: lw,
     pLL: ll,
+    RAW: raw,
+    RAL: ral,
   };
+  return filteredData;
+};
+
+/**
+ * Filter by rank (button group)
+ * @param {array} data
+ */
+export const filterByRankOdd = (data, type, range) => {
+  const filteredData = [];
+  data.map((item) => {
+    let enabledRank = 0;
+    if (type === 1) {
+      // All
+      enabledRank = 1;
+    } else if (type === 2) {
+      // Both Ranked
+      if (item['player1_ranking'] !== '-' && item['player2_ranking'] !== '-') {
+        enabledRank = 1;
+      }
+    } else if (type === 3) {
+      // One Ranked
+      if (item['player1_ranking'] !== '-' || item['player2_ranking'] !== '-') {
+        enabledRank = 1;
+      }
+    } else if (type === 4) {
+      // Both Unranked
+      if (item['player1_ranking'] === '-' && item['player2_ranking'] === '-') {
+        enabledRank = 1;
+      }
+    }
+    if (enabledRank) {
+      if (
+        (item['player1_odd'] >= range[0] && item['player1_odd'] <= range[1]) ||
+        (item['player2_odd'] >= range[0] && item['player2_odd'] <= range[1])
+      ) {
+        filteredData.push(item);
+      }
+    }
+  });
   return filteredData;
 };

@@ -3,24 +3,40 @@ import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
 
-import MatchItem from '../components/MatchItem';
+import { filterByRankOdd } from '../utils';
 import { getUpcomingData } from '../apis';
+import MatchItem from '../components/MatchItem';
 import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
+import RankButtonGroup from '../components/RankButtonGroup';
+import CustomSlider from '../components/CustomSlider/slider';
 
 const Upcoming = () => {
   const [upcomingData, setUpcomingData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeFilter, setActiveFilter] = useState(1);
+  const defaultValues = [1, 2];
+  const domain = [1, 2];
+  const [values, setValues] = useState(defaultValues.slice());
   const override = css`
     display: block;
     margin: 0 auto;
     border-color: red;
   `;
 
+  const handleChange = (value) => {
+    setValues(value);
+  };
+
   useEffect(() => {
     const loadUpcomingData = async () => {
       const response = await getUpcomingData();
       if (response.status === 200) {
-        setUpcomingData(response.data);
+        const filteredData = filterByRankOdd(
+          response.data,
+          activeFilter,
+          values
+        );
+        setUpcomingData(filteredData);
       } else {
         setUpcomingData([]);
       }
@@ -31,7 +47,7 @@ const Upcoming = () => {
     };
 
     loadUpcomingData();
-  }, []);
+  }, [activeFilter, values]);
 
   return (
     <>
@@ -50,6 +66,18 @@ const Upcoming = () => {
       )}
       <section className="section upcoming">
         <div className="container-fluid">
+          <div className="row">
+            <RankButtonGroup
+              setActiveFilter={setActiveFilter}
+              activeFilter={activeFilter}
+            />
+            <CustomSlider
+              handleChange={handleChange}
+              values={values}
+              domain={domain}
+              step={0.1}
+            />
+          </div>
           <div className="row mt-4">
             {upcomingData.length > 0 ? (
               upcomingData.map((item) => (
@@ -62,9 +90,6 @@ const Upcoming = () => {
                 />
               ))
             ) : (
-              // <div className="no-result col-12">
-              //   <span>There is no upcoming data</span>
-              // </div>
               <></>
             )}
           </div>

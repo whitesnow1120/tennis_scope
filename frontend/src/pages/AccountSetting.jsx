@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
-// import { getAccountInfo } from '../apis';
-// import { GET_ACCOUNT_INFO } from '../store/actions/types';
 import AccountInput from '../components/AccountInput';
 import AccountToggle from '../components/AccountToggle';
 
 const AccountSetting = () => {
-  // const dispatch = useDispatch();
   const { accountInfo } = useSelector((state) => state.tennis);
 
   const [value, setValue] = useState({
@@ -16,7 +13,6 @@ const AccountSetting = () => {
     changed: false,
     opened: false,
   });
-
 
   useEffect(() => {
     if (value.changed) {
@@ -27,7 +23,7 @@ const AccountSetting = () => {
       val: '',
       changed: false,
       opened: false,
-    })
+    });
   }, [value.changed]);
 
   return (
@@ -37,7 +33,7 @@ const AccountSetting = () => {
           <div className="mt-4 pt-5">
             <h3>Account Settings</h3>
             <div className="sub-settings">
-              <div className='account-setting-sub-title'>General Settings</div>
+              <div className="account-setting-sub-title">General Settings</div>
               <AccountInput
                 title="Name"
                 defaultValue={accountInfo.name}
@@ -60,42 +56,37 @@ const AccountSetting = () => {
                 setValue={setValue}
               />
               <AccountToggle
-                title='Show tooltips'
-                name='showTooltips'
+                title="Show tooltips"
+                name="showTooltips"
                 checked={accountInfo.showTooltips}
                 accountInfo={accountInfo}
               />
             </div>
             <div className="sub-settings">
-              <div className='account-setting-sub-title'>Notification settings</div>
+              <div className="account-setting-sub-title">
+                Notification settings
+              </div>
               <AccountToggle
-                title='Subscription notifications'
-                name='subscriptionNotifications'
+                title="Subscription notifications"
+                name="subscriptionNotifications"
                 checked={accountInfo.subscriptionNotifications}
                 accountInfo={accountInfo}
               />
               <AccountToggle
-                title='New features'
-                name='newFeatures'
+                title="New features"
+                name="newFeatures"
                 checked={accountInfo.newFeatures}
                 accountInfo={accountInfo}
               />
               <AccountToggle
-                title='promotion notifications'
-                name='promotionNotifications'
+                title="promotion notifications"
+                name="promotionNotifications"
                 checked={accountInfo.promotionNotifications}
                 accountInfo={accountInfo}
               />
             </div>
             <div className="sub-settings">
-              <div className='account-setting-sub-title'>Subscriptions</div>
-              {/* <AccountInput
-                title="Name"
-                defaultValue="Andrejs"
-                placeholder="Write your name..."
-                value={value}
-                setValue={setValue}
-              /> */}
+              <div className="account-setting-sub-title">Subscriptions</div>
             </div>
           </div>
         </div>

@@ -4,10 +4,10 @@ import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
 
-import MatchItem from '../components/MatchItem';
 import { getTrigger1Data } from '../apis';
-import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
 import ding from '../assets/ding.mp3';
+import MatchItem from '../components/MatchItem';
+import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
 
 const Trigger1 = () => {
   const [play] = useSound(ding, { interrupt: true });
@@ -28,18 +28,38 @@ const Trigger1 = () => {
         // check new trigger data
         const data = response.data;
         // old trigger data event ids
-        const oldEventIds = trigger1Data.map((item) => {
-          return item['event_id'];
-        });
-        const newTrigger1EventIds = data.map((item) => {
-          if (!oldEventIds.includes(item['event_id'])) {
-            return item['event_id'];
-          }
-        });
-        if (newTrigger1EventIds.length > 0) {
-          play();
+        let oldEventIds = JSON.parse(
+          localStorage.getItem('oldTrigger1EventIds')
+        );
+
+        let newTrigger1Events = [];
+        if (oldEventIds != null) {
+          newTrigger1Events = data.filter(
+            (item) => !oldEventIds.includes(item['event_id'])
+          );
+        } else {
+          newTrigger1Events = data;
         }
-        setNewEventIds(newTrigger1EventIds);
+
+        let allEventIds = [];
+        let newIds = [];
+        if (newTrigger1Events.length > 0) {
+          play();
+          localStorage.setItem('trigger1Clicked', '1');
+          newTrigger1Events.map((item) => {
+            newIds.push(item['event_id']);
+          });
+          allEventIds = oldEventIds.concat(newIds);
+        } else {
+          localStorage.setItem('trigger1Clicked', '2');
+          allEventIds = oldEventIds;
+        }
+        // concat old and new event ids
+        localStorage.setItem(
+          'oldTrigger1EventIds',
+          JSON.stringify(allEventIds)
+        );
+        setNewEventIds(newIds);
         setTrigger1Data(response.data);
       } else {
         setTrigger1Data([]);

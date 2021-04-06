@@ -1,8 +1,8 @@
 import React, { useState, forwardRef } from 'react';
-import PropTypes from 'prop-types';
 import { useDispatch, useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import PropTypes from 'prop-types';
 
 import { GET_HISTORY_DATE } from '../store/actions/types';
 

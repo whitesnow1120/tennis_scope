@@ -8,13 +8,14 @@ import {
   GET_RELATION_FILTERED_DATA,
   GET_OPENED_DETAIL,
 } from '../store/actions/types';
-import { getWinner, formatDateTime, filterData } from '../utils';
+import { getWinner, formatDateTime, filterData, sortByTime } from '../utils';
 import Surface from './InplayDetail/Surface';
 import Set from './InplayDetail/Set';
 import FilterRank from './InplayDetail/FilterRank';
 import FilterOpponent from './InplayDetail/FilterOpponent';
 import FilterLimit from './InplayDetail/FilterLimit';
 import PlayerDetail from './InplayDetail/PlayerDetail';
+import AverageRanks from './InplayDetail/AverageRanks';
 
 const MatchItem = (props) => {
   const { item, type, loading, setLoading, newIds } = props;
@@ -55,9 +56,9 @@ const MatchItem = (props) => {
         };
 
         const response = await getRelationData(params);
-
         if (response.status === 200) {
           filteredData = response.data;
+          sortByTime(filteredData, item.player1_id, item.player2_id);
           dispatch({
             type: GET_RELATION_DATA,
             payload: filteredData,
@@ -141,7 +142,7 @@ const MatchItem = (props) => {
   return (
     <div className="col-lg-4 col-md-6 col-sm-6 col-xs-12 mb-2 pb-2 pt-2 match-item">
       <div className={newBox}>
-        <div onClick={handleMatchClicked}>
+        <div className="current-match" onClick={handleMatchClicked}>
           <div className="left">
             <div className="name">
               <span>{item.player1_name}</span>
@@ -235,6 +236,7 @@ const MatchItem = (props) => {
                     selectedRankDiff={selectedRankDiff1}
                     setSelectedRankDiff={setSelectedRankDiff1}
                   />
+                  <AverageRanks player_id={item.player1_id} />
                 </div>
               </div>
               <div className="right-box">
@@ -246,6 +248,7 @@ const MatchItem = (props) => {
                     selectedRankDiff={selectedRankDiff2}
                     setSelectedRankDiff={setSelectedRankDiff2}
                   />
+                  <AverageRanks player_id={item.player2_id} />
                 </div>
               </div>
               <div className="center-box">

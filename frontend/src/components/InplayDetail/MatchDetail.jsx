@@ -11,16 +11,15 @@ const MatchDetail = (props) => {
   const [opponentRank, setOpponentRank] = useState('-');
   const [scores, setScores] = useState([]);
   const [depths, setDepths] = useState([]);
-  const [home, setHome] = useState(0);
-  const [tooltipContent, setToolTipContent] = useState("");
+  const [tooltipContent, setToolTipContent] = useState('');
 
   useEffect(() => {
     if (match != undefined) {
       const matchDate = formatDateTime(match.time);
       let content = `<div class='opponent-tooltip-content'><span>${matchDate[0]}</span>`;
-      content += `<span>${match["o_name"]}</span>`;
-      let surface = match["surface"] === null ? "-" : match["surface"];
-      let odd = match["o_odd"] === null ? "-" : match["o_odd"];
+      content += `<span>${match['o_name']}</span>`;
+      let surface = match['surface'] === null ? '-' : match['surface'];
+      let odd = match['o_odd'] === null ? '-' : match['o_odd'];
       content += `<span>${surface} ${odd}</span></div>`;
 
       setToolTipContent(content);
@@ -28,29 +27,14 @@ const MatchDetail = (props) => {
       const allScores = match.scores.split(',');
       setScores(allScores);
       setOpponentRank(match['o_ranking'] === null ? '-' : match['o_ranking']);
-      setDepths(JSON.parse(match['p_depths']));
-
-      const pWW = parseInt(JSON.parse(match['p_ww'])[0]);
-      const pWL = parseInt(JSON.parse(match['p_wl'])[0]);
-      const pLW = parseInt(JSON.parse(match['p_lw'])[0]);
-      const pLL = parseInt(JSON.parse(match['p_ll'])[0]);
-      const won = pWW + pLW;
-      const lost = pWL + pLL;
-      const leftScore = allScores[0].split('-')[0];
-      const rightScore = allScores[0].split('-')[1];
-      if (leftScore > rightScore) {
-        if (won > lost) {
-          setHome(1);
-        } else {
-          setHome(2);
-        }
+      const depth = JSON.parse(match['p_depths']);
+      const sumDepth = depth.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+      if (sumDepth !== 0) {
+        setDepths(JSON.parse(match['p_depths']));
       } else {
-        if (won > lost) {
-          setHome(2);
-        } else {
-          setHome(1);
-        }
+        setDepths('-');
       }
+
       // count of sets
       switch (allScores.length) {
         case 1:
@@ -81,13 +65,13 @@ const MatchDetail = (props) => {
    */
   const getScoreClassName = (index) => {
     const score = scores[index].split('-');
-    if (home === 1) {
-      if (score[0] >= score[1]) {
+    if (match['home'] === 'p') {
+      if (parseInt(score[0]) >= parseInt(score[1])) {
         return 'bg-won';
       }
       return 'bg-lose';
-    } else if (home === 2) {
-      if (score[0] >= score[1]) {
+    } else if (match['home'] === 'o') {
+      if (parseInt(score[0]) >= parseInt(score[1])) {
         return 'bg-lose';
       }
       return 'bg-won';
@@ -122,7 +106,11 @@ const MatchDetail = (props) => {
                 </div>
                 <div>
                   <span>
-                    {depths[index] > 0 ? '+' + depths[index] : depths[index]}
+                    {depths === '-'
+                      ? '-'
+                      : depths[index] > 0
+                      ? '+' + depths[index]
+                      : depths[index]}
                   </span>
                 </div>
               </div>

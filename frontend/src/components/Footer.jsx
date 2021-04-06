@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import PropTypes from 'prop-types';
 import { Link, Redirect } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import PropTypes from 'prop-types';
 
 import { CURRENT_YEAR } from '../common/Constants';
 import logoFooterIcon from '../assets/img/logo_footer.png';

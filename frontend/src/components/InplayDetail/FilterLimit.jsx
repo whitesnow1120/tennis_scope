@@ -12,9 +12,7 @@ const FilterLimit = (props) => {
     <div className="limit-count">
       <div
         className={
-          selectedLimit === 10
-            ? 'active limit-count-l-10'
-            : 'limit-count-l-10'
+          selectedLimit === 10 ? 'active limit-count-l-10' : 'limit-count-l-10'
         }
         onClick={() => handleClicked(10)}
       >
@@ -22,9 +20,7 @@ const FilterLimit = (props) => {
       </div>
       <div
         className={
-          selectedLimit === 15
-            ? 'active limit-count-l-15'
-            : 'limit-count-l-15'
+          selectedLimit === 15 ? 'active limit-count-l-15' : 'limit-count-l-15'
         }
         onClick={() => handleClicked(15)}
       >
@@ -32,9 +28,7 @@ const FilterLimit = (props) => {
       </div>
       <div
         className={
-          selectedLimit === 20
-            ? 'active limit-count-l-20'
-            : 'limit-count-l-20'
+          selectedLimit === 20 ? 'active limit-count-l-20' : 'limit-count-l-20'
         }
         onClick={() => handleClicked(20)}
       >

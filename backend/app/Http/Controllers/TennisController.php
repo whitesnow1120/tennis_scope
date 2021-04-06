@@ -9,127 +9,57 @@ use App\Helpers\Helper;
 
 class TennisController extends Controller
 {
-    public function index()
-    {
+    public function index() {
         echo "index";
     }
 
-    public function getMatchesResponse($matches_data_array, $players) {
-        $matches = array();
-        $i = 0;
-        foreach ($matches_data_array as $matches_data) {
-            foreach ($matches_data as $data) {
-                if (gettype($data) == "object") {
-                    $data_id = $data->id;
-                    $data_surface = $data->surface;
-                    $data_event_id = $data->event_id;
-                    $data_player1_id = $data->player1_id;
-                    $data_player1_name = $data->player1_name;
-                    $data_player1_odd = $data->player1_odd;
-                    $data_player2_id = $data->player2_id;
-                    $data_player2_name = $data->player2_name;
-                    $data_player2_odd = $data->player2_odd;
-                    $data_scores = $data->scores;
-                    $data_time_status = $data->time_status;
-                    $data_time = $data->time;
-                    $data_detail = $data->detail;
-                } else {
-                    $data_id = $data["id"];
-                    $data_surface = $data["surface"];
-                    $data_event_id = $data["event_id"];
-                    $data_player1_id = $data["player1_id"];
-                    $data_player1_name = $data["player1_name"];
-                    $data_player1_odd = $data["player1_odd"];
-                    $data_player2_id = $data["player2_id"];
-                    $data_player2_name = $data["player2_name"];
-                    $data_player2_odd = $data["player2_odd"];
-                    $data_scores = $data["scores"];
-                    $data_time_status = $data["time_status"];
-                    $data_time = $data["time"];
-                    $data_detail = $data["detail"];
-                }
-                switch (trim($data_surface)) {
-                    case "Clay":
-                        $surface = "CLY";
-                        break;
-                    case "Hardcourt outdoor":
-                        $surface = "HRD";
-                        break;
-                    case "Hardcourt indoor" || "Carpet indoor":
-                        $surface = "IND";
-                        break;
-                    case "Grass":
-                        $surface = "GRS";
-                        break;
-                    default:
-                        $surface = $data_surface;
-                        break;
-                }
-    
-                $matches[$i] = [
-                    'id'                =>  $data_id,
-                    'event_id'          =>  $data_event_id,
-                    'player1_id'        =>  $data_player1_id,
-                    'player1_name'      =>  $data_player1_name,
-                    'player1_odd'       =>  $data_player1_odd,
-                    'player1_ranking'   =>  "-",
-                    'player2_id'        =>  $data_player2_id,
-                    'player2_name'      =>  $data_player2_name,
-                    'player2_odd'       =>  $data_player2_odd,
-                    'player2_ranking'   =>  "-",
-                    'surface'           =>  $surface,
-                    'scores'            =>  $data_scores,
-                    'time_status'       =>  $data_time_status,
-                    'time'              =>  $data_time,
-                    'detail'            =>  $data_detail
-                ];
-    
-                foreach ($players as $player) {
-                    if ($data_player1_id == $player->api_id) {
-                        $matches[$i]["player1_name"] = $player->name;
-                        $matches[$i]["player1_ranking"] = (int)$player->ranking;
-                    }
-    
-                    if ($data_player2_id == $player->api_id) {
-                        $matches[$i]["player2_name"] = $player->name;
-                        $matches[$i]["player2_ranking"] = (int)$player->ranking;
-                    }
-                }
-                $i ++;
-            }
-        }
-        return $matches;
-    }
-
+    /**
+     * Get matches
+     * @param   string  $date
+     * @param   int     $type (0: upcoming, 1: inplay, 3: history)
+     * @return  array   $matches
+     */
     public function getMatches($date, $type) {
+        $current_date = date('Y-m-d', time());
         if (!$date) {
-            $date = date('Y-m-d', time());
+            $date = $current_date;
         }
         $players = DB::table("t_players")->get();
+
         $match_table_name = "t_matches_" . substr($date, 0, 4) . "_" . substr($date, 5, 2);
         if (!Schema::hasTable($match_table_name)) {
             return array();
         }
+        $times = Helper::getTimePeriod($date);
         if ($type == 0) { // upcoming
             $matches_data = DB::table($match_table_name)
                             ->where('time_status', 0)
+                            ->whereBetween('time', [$times[0], $times[1]])
                             ->orderBy('time')
-                            ->get();        
+                            ->get();  
         } elseif ($type == 1) { // in play
             $matches_data = DB::table($match_table_name)
                             ->where('time_status', 1)
+                            ->whereBetween('time', [$times[0], $times[1]])
                             ->orderBy('time')
                             ->get();
         } elseif ($type == 3) { // ended
-            $times = Helper::getTimePeriod($date);
-            $matches_data = DB::table($match_table_name)
+            if ($date == $current_date) {
+                $matches_data = DB::table($match_table_name)
                             ->where('time_status', 3)
                             ->whereBetween('time', [$times[0], $times[1]])
                             ->orderBy('time')
                             ->get();
+            } else {
+                $matches_data = DB::table($match_table_name)
+                    ->whereBetween('time', [$times[0], $times[1]])
+                    ->orderBy('time')
+                    ->get();
+            }
+            
             $matches_array = array();
             array_push($matches_array, $matches_data);
-            return $this->getMatchesResponse($matches_array, $players);
+            return Helper::getMatchesResponse($matches_array, $players);
         }
 
         $upcoming_inplay_data = array();
@@ -148,124 +78,16 @@ class TennisController extends Controller
             }
             $matches_array = array();
             array_push($matches_array, $upcoming_inplay_data);
-            return $this->getMatchesResponse($matches_array, $players);
+            return Helper::getMatchesResponse($matches_array, $players);
         }
     }
 
     /**
-     * Get opponent BRW, BRL, GAH
+     * Get relation data (un pre-calcuated)
+     * @param   int     $player1_id
+     * @param   int     $player2_id
+     * @return  array   $matches
      */
-    public function getOpponentsDetail($player1_id, $player1_detail, $player2_id, $player2_detail, $surface="ALL") {
-        $opponent_ids_1 = array();
-        $opponent_ids_2 = array();
-        foreach ($player1_detail as $data) {
-            $opponent_id = $data["player1_id"] == $player1_id ? $data["player2_id"] : $data["player1_id"];
-            if (!in_array($opponent_id, $opponent_ids_1)) {
-                array_push($opponent_ids_1, $opponent_id);
-            }
-        }
-
-        foreach ($player2_detail as $data) {
-            $opponent_id = $data["player1_id"] == $player2_id ? $data["player2_id"] : $data["player1_id"];
-            if (!in_array($opponent_id, $opponent_ids_2)) {
-                array_push($opponent_ids_2, $opponent_id);
-            }
-        }
-
-        $tables = DB::table("pg_catalog.pg_tables")
-                    ->where("schemaname", "public")
-                    ->where("tablename", "like", "t_matches_%")
-                    ->get();
-
-        $condition = array();
-        switch($surface) {
-            case "CLY":
-                $condition["surface"] = ["Clay"];
-                break;
-            case "HRD":
-                $condition["surface"] = ["Hardcourt outdoor"];
-                break;
-            case "IND":
-                $condition["surface"] = ["Hardcourt indoor", "Carpet indoor"];
-                break;
-            case "GRS":
-                $condition["surface"] = ["Grass"];
-                break;
-            default:
-                $condition["surface"] = $surface;
-                break;
-        }
-
-        $match_table_union_1 = array();
-        $match_table_union_2 = array();
-
-        foreach ($tables as $table) {
-            // filtering by opponent ids
-            $match_table_subquery_1 = DB::table($table->tablename)->where('time_status', 3)
-                                        ->where(function($query) use ($opponent_ids_1) {
-                                            $query->whereIn('player1_id', $opponent_ids_1)
-                                            ->orWhereIn('player2_id', $opponent_ids_1);
-                                        });
-            $match_table_subquery_2 = DB::table($table->tablename)->where('time_status', 3)
-                                        ->where(function($query) use ($opponent_ids_2) {
-                                            $query->whereIn('player1_id', $opponent_ids_2)
-                                            ->orWhereIn('player2_id', $opponent_ids_2);
-                                        });
-            // filtering by surface
-            if ($condition["surface"] != "ALL") {
-                $match_table_subquery1->whereIn("surface", $condition["surface"]);
-                $match_table_subquery2->whereIn("surface", $condition["surface"]);
-            }
-
-            array_push($match_table_union_1, $match_table_subquery_1);
-            array_push($match_table_union_2, $match_table_subquery_2);
-        }
-
-        $opponents_1_set = array();
-        $opponents_2_set = array();
-
-        // add sets
-        foreach ($opponent_ids_1 as $id) {
-            if (count($match_table_union_1) > 0) {
-                $matches_data_1_array = array();
-                foreach ($match_table_union_1 as $data) {
-                    $matches_data_1 = $data
-                                        ->where(function($query) use ($id) {
-                                            $query->where('player1_id', $id)
-                                            ->orWhere('player2_id', $id);
-                                        })->get();
-                    
-                    $match_array = json_decode(json_encode($matches_data_1), true);
-                    $matches_data_1_array = array_merge($matches_data_1_array, $match_array);
-                }
-                $opponents_1_set[$id] = Helper::getSetsOpponents($matches_data_1_array, $id);
-            }
-        }
-
-        foreach ($opponent_ids_2 as $id) {
-            if (count($match_table_union_2) > 0) {
-                $matches_data_2_array = array();
-                foreach ($match_table_union_2 as $data) {
-                    $matches_data_2 = $data
-                                        ->where(function($query) use ($id) {
-                                            $query->where('player1_id', $id)
-                                            ->orWhere('player2_id', $id);
-                                        })->get();
-    
-                    $match_array = json_decode(json_encode($matches_data_2), true);
-                    $matches_data_2_array = array_merge($matches_data_2_array, $match_array);
-
-                }
-                $opponents_2_set[$id] = Helper::getSetsOpponents($matches_data_2_array, $id);
-            }
-        }
-
-        return [
-            $player1_id => $opponents_1_set,
-            $player2_id => $opponents_2_set,
-        ];
-    }
-
     public function getRelationUnPreCalculation($player1_id, $player2_id) {
         $history_tables = DB::table("pg_catalog.pg_tables")
 					->where("schemaname", "public")
@@ -298,8 +120,8 @@ class TennisController extends Controller
 		$matches2 = Helper::getMatchesResponse($matches2_array, $players);
 
 		// add sets
-        $matches1_set = Helper::getSetsPerformanceDetail($matches1, $player1_id);
-        $matches2_set = Helper::getSetsPerformanceDetail($matches2, $player2_id);
+        $matches1_set = Helper::getPlayersSubDetail($matches1, $player1_id);
+        $matches2_set = Helper::getPlayersSubDetail($matches2, $player2_id);
 
 		// add breaks to the players array
         $matches_1 = array();
@@ -310,7 +132,7 @@ class TennisController extends Controller
         $event_ids = array();
 
         foreach ($matches1_set as $data) {
-			if ($data["scores"] != "" && $data["scores"] != "0-0" && $data["scores"] != "0-0,") {
+			if ($data["scores"] != "") {
 				$brw = array();
 				$brl = array();
 				$gah = array();
@@ -366,11 +188,11 @@ class TennisController extends Controller
 					"scores"    => $data["scores"],
 					"surface"   => $data["surface"],
 					"time"      => $data["time"],
-					"detail"	=> $data["detail"],
 					"o_id"		=> $opponent_info["o_id"],
 					"o_name"	=> $opponent_info["o_name"],
 					"o_odd"		=> $opponent_info["o_odd"],
 					"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
+					"home"	    => $data["home"],
 				];
                 if (!in_array($data["event_id"], $event_ids)) {
                     array_push($player1_objects, $db_data);
@@ -379,8 +201,9 @@ class TennisController extends Controller
 			}
 		}
 
+        $event_ids = array();
         foreach ($matches2_set as $data) {
-			if ($data["scores"] != "" && $data["scores"] != "0-0" && $data["scores"] != "0-0,") {
+			if ($data["scores"] != "") {
 				$brw = array();
 				$brl = array();
 				$gah = array();
@@ -437,11 +260,11 @@ class TennisController extends Controller
 					"scores"    => $data["scores"],
 					"surface"   => $data["surface"],
 					"time"      => $data["time"],
-					"detail"	=> $data["detail"],
 					"o_id"		=> $opponent_info["o_id"],
 					"o_name"	=> $opponent_info["o_name"],
 					"o_odd"		=> $opponent_info["o_odd"],
 					"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
+					"home"	    => $data["home"],
 				];
 				if (!in_array($data["event_id"], $event_ids)) {
                     array_push($player2_objects, $db_data);
@@ -454,6 +277,9 @@ class TennisController extends Controller
 
     /**
      * Get pre-calculated data for Upcoming & Inplay
+     * @param  int   $player1_id
+     * @param  int   $player2_id
+     * @return array $matches
      */
     public function getRelationPreCalculation($player1_id, $player2_id) {
         $bucket_players_name = "t_bucket_players_" . $player1_id . "_" . $player2_id;
@@ -483,10 +309,10 @@ class TennisController extends Controller
                                 "o_ranking",
                                 "scores",
                                 "surface",
-                                "time"
+                                "time",
+                                "home"
                             )
                             ->where("p_id", $player1_id)
-                            ->orderByDesc("time")
                             ->get();
             
             $player2_object = DB::table($bucket_players_name)
@@ -510,10 +336,10 @@ class TennisController extends Controller
                                 "o_ranking",
                                 "scores",
                                 "surface",
-                                "time"
+                                "time",
+                                "home"
                             )
                             ->where("p_id", $player2_id)
-                            ->orderByDesc("time")
                             ->get();
         }
         
@@ -523,6 +349,11 @@ class TennisController extends Controller
         ];
     }
 
+    /**
+     * Get trigger1 data (rule)
+     * @param   array $inplay_data
+     * @return  array $matches
+     */
     public function triggerFilter1($inplay_data) {
         $filteredData = array();
         foreach ($inplay_data as $data) {
@@ -615,6 +446,11 @@ class TennisController extends Controller
         return $filteredData;
     }
 
+    /**
+     * Get player won count
+     * @param  array $performance
+     * @return int   $sum
+     */
     public function getPlayerWonCount($performance) {
         $ww = json_decode($performance[0]);
         $lw = json_decode($performance[1]);
@@ -623,6 +459,9 @@ class TennisController extends Controller
         return $sum_ww + $sum_1w;
     }
 
+    /**
+     * History Request
+     */
     public function history(Request $request) {
         try {
             $date = $request->input('date', date('Y-m-d', time()));
@@ -633,6 +472,9 @@ class TennisController extends Controller
         }
     }
 
+    /**
+     * Upcoming Request
+     */
     public function upComing(Request $request) {
         try {
             $upcoming_data = $this->getMatches(null, 0); // time_status (0: upcoming)
@@ -651,9 +493,12 @@ class TennisController extends Controller
         }
     }
 
+    /**
+     * Trigger1 Request
+     */
     public function trigger1(Request $request) {
         try {
-            $trigger1_data = $this->getMatches(null, 1); // trigger
+            $trigger1_data = $this->getMatches(null, 1);
             $filteredData = $this->triggerFilter1($trigger1_data);
             return response()->json($filteredData, 200);
         } catch (Exception $e) {
@@ -661,6 +506,9 @@ class TennisController extends Controller
         }
     }
 
+    /**
+     * Relation Request
+     */
     public function relation(Request $request) {
         try {
             $player1_id = $request->input('player1_id', null);

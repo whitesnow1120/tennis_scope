@@ -55,8 +55,8 @@ h6 {
 
 @media (max-width: 576px) {
   .container-fluid {
-    padding-left: 10px;
-    padding-right: 15px;
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
@@ -83,7 +83,6 @@ h6 {
   -webkit-box-shadow: none !important;
   box-shadow: none !important;
 }
-
 
 .form-group .form-control {
   -webkit-box-shadow: none;
@@ -115,7 +114,7 @@ body {
   overflow-x: hidden !important;
   font-size: 16px;
   color: #161c2d;
-  background-color: #F9FAFC;
+  background-color: #f9fafc;
 }
 
 h1,
@@ -156,12 +155,7 @@ p {
 .section {
   padding: 100px 0;
   position: relative;
-}
-
-@media (max-width: 768px) {
-  .section {
-    padding: 60px 0;
-  }
+  min-height: calc(100vh - 177px);
 }
 
 .section-two {
@@ -200,17 +194,18 @@ p {
   display: inline-block;
 }
 
-#topnav .navigation-menu .active, .footer .footer-bar .active {
+#topnav .navigation-menu .active,
+.footer .footer-bar .active {
   background: rgba(83, 171, 11, 0.1) !important;
   border-radius: 2px;
-  color: #53AB0B;
+  color: #53ab0b;
 }
 
 #topnav .navigation-menu .navigation-item,
 #topnav #account li,
 #topnav #account span {
-  padding-top: 18px;
-  padding-bottom: 10px;
+  padding-top: 21px;
+  padding-bottom: 21px;
 }
 
 #topnav #account {
@@ -220,7 +215,6 @@ p {
 #topnav .has-submenu.active a {
   color: #ffffff;
 }
-
 
 #topnav .has-submenu {
   position: relative;
@@ -331,14 +325,14 @@ p {
 
 #topnav .navigation-menu > li {
   float: left;
-  display: block;
+  display: flex;
   position: relative;
   margin: 0 10px;
 }
 
 #topnav .navigation-menu > li > a {
   display: block;
-  color: #474D5C;
+  color: #474d5c;
   font-size: 13px;
   background-color: transparent !important;
   font-weight: 700;
@@ -355,7 +349,7 @@ p {
 #topnav .navigation-menu > li > a:hover,
 #topnav .navigation-menu > li > a:focus,
 #topnav .navigation-menu > li > a:active {
-  color: #53AB0B;
+  color: #53ab0b;
 }
 
 #topnav .navigation-menu .has-submenu .menu-arrow {
@@ -379,14 +373,14 @@ p {
 }
 
 #topnav .account-type a {
-  color: #EAAE5D !important;
+  color: #eaae5d !important;
 }
 #topnav .account-type a:hover,
 #topnav .account-type a:focus,
 #topnav .account-type a:active {
   background: rgba(234, 174, 93, 0.1) !important;
   border-radius: 2px;
-  color: #EAAE5D !important;
+  color: #eaae5d !important;
 }
 
 #topnav .menu-extras {
@@ -451,7 +445,7 @@ p {
 }
 
 .section {
-  background: #F9FAFC;
+  background: #f9fafc;
 }
 
 .logo {
@@ -466,12 +460,12 @@ p {
   width: fit-content;
   padding-left: 30px;
   padding-right: 30px;
-  border-bottom: 1px solid #E8EAF2;
-  color: #474D5C;
+  border-bottom: 1px solid #e8eaf2;
+  color: #474d5c;
 }
 
 .description {
-  color: #474D5C;
+  color: #474d5c;
 }
 
 .description p {
@@ -485,8 +479,8 @@ p {
 
 .machine-effort,
 .human-intuition {
-  background: #FFFFFF;
-  border: 2px solid #E8EAF2;
+  background: #ffffff;
+  border: 2px solid #e8eaf2;
   box-sizing: border-box;
 }
 
@@ -499,8 +493,60 @@ p {
   padding-left: 10px;
 }
 
+.green-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #53ab0b;
+  margin-top: 9px;
+  margin-left: -11px;
+}
+
 .new-trigger-box {
   border: 2px solid #89d46a !important;
+}
+
+.rank-button-group {
+  margin-left: 15px;
+}
+
+.rank-button-group span {
+  font-size: 14px !important;
+}
+
+.rank-button-group .btn-secondary {
+  color: #474e5c;
+  background-color: #e4e7ee;
+  border-color: #d2d6e5;
+}
+
+.rank-button-group .btn-secondary:hover {
+  color: #ffffff;
+  background-color: #b2b8c7;
+  border-color: #8f98aa;
+}
+
+.rank-button-group .btn-secondary:not(:disabled):not(.disabled).active,
+.rank-button-group .btn-secondary:not(:disabled):not(.disabled):active,
+.rank-button-group .show > .btn-secondary.dropdown-toggle {
+  color: #fff;
+  background-color: #7b808b;
+  border-color: #4e555b;
+}
+
+.history-header {
+  display: flex;
+}
+
+.header-filter-group {
+  display: flex;
+}
+
+.custom-slider {
+  height: 20px;
+  width: 30%;
+  margin-top: 8px;
+  margin-left: 40px;
 }
 
 .history .row,
@@ -514,6 +560,7 @@ p {
 .history .datepicker-container {
   margin-left: 30px;
   width: 220px;
+  margin-top: 5px;
 }
 
 .history .datepicker-container .datepicker {
@@ -521,21 +568,23 @@ p {
 }
 
 .match-box {
-  border: 2px solid #E8EAF2;
+  border: 2px solid #e8eaf2;
   background-color: #fff;
   padding-top: 10px;
   padding-bottom: 20px;
-  padding-left: 15px;
-  padding-right: 15px;
   height: auto;
   font-size: 14px;
-  word-break: break-all;
   cursor: pointer;
 }
 
+.match-box .current-match {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
 .match-box:hover {
-  background: #FFFFFF;
-  border: 2px solid #D2D6E5;
+  background: #ffffff;
+  border: 2px solid #d2d6e5;
   box-sizing: border-box;
   box-shadow: 0px 10px 15px rgba(146, 148, 162, 0.1);
   border-radius: 4px;
@@ -546,7 +595,8 @@ p {
   display: flex;
   align-items: center;
   font-weight: bold;
-  color: #474D5C;
+  color: #474d5c;
+  word-break: break-all;
 }
 
 .match-item .scores {
@@ -554,17 +604,17 @@ p {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #7C859C;
+  color: #7c859c;
 }
 
 .match-item .left {
-  float:left;
+  float: left;
   width: 33%;
   text-align: left;
 }
 
 .match-item .right {
-  float:right;
+  float: right;
   width: 33%;
   text-align: left;
 }
@@ -576,24 +626,24 @@ p {
 }
 
 .match-item .sub-left {
-  float:left;
+  float: left;
   width: 30%;
   text-align: center;
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .match-item .sub-right {
-  float:right;
+  float: right;
   width: 30%;
   text-align: center;
-  color: #474D5C;
+  color: #474d5c;
 }
 
 .match-item .sub-center {
   margin: 0 auto;
   width: 30%;
-  color: #7C859C;
-  background-color: #E5E7EF;
+  color: #7c859c;
+  background-color: #e5e7ef;
   text-align: center;
 }
 
@@ -613,13 +663,14 @@ p {
 .match-item .players-detail-surface {
   display: flex;
   width: 100%;
-  background-color: #BBC0D2;
+  background-color: #bbc0d2;
   padding: 5px;
+  justify-content: center;
 }
 
 .match-item .players-detail-surface div {
-  background-color: #F3F4F4;
-  color: #7C859C;
+  background-color: #f3f4f4;
+  color: #7c859c;
   margin-right: 5px;
   font-size: 12px;
   font-weight: 500;
@@ -636,13 +687,13 @@ p {
 .match-item .rank-opponent .active,
 .match-item .limit-count .active,
 .match-item .set .active {
-  background-color: #7C859C !important;
+  background-color: #7c859c !important;
   color: #fff !important;
 }
 
 .match-item .compare-filters {
-  background-color: #E5E7EF;
-  color: #7C859C;
+  background-color: #e5e7ef;
+  color: #7c859c;
   font-size: 12px;
   padding: 0 5px 5px 5px;
 }
@@ -663,7 +714,6 @@ p {
   float: right;
   text-align: right;
   display: flex;
-  
 }
 
 .match-item .compare-filters .center-box {
@@ -685,8 +735,8 @@ p {
 .match-item .compare-filters .rank-diff div,
 .match-item .compare-filters .break-diff div,
 .match-item .compare-filters .rank-opponent div,
-.match-item .compare-filters .limit-count div{
-  background: #F3F4F4;
+.match-item .compare-filters .limit-count div {
+  background: #f3f4f4;
   margin-left: 5px;
   width: 40px;
   height: 20px;
@@ -700,9 +750,11 @@ p {
   display: flex;
   margin-top: 20px;
   text-align: center;
-  color: #7C859C;
+  color: #7c859c;
   font-size: 12px;
   justify-content: space-between;
+  padding-left: 15px;
+  padding-right: 15px;
 }
 
 .match-item .set-title {
@@ -712,7 +764,7 @@ p {
 .match-item .set .set-all {
   width: 40px;
   height: 20px;
-  background: #F3F4F4;
+  background: #f3f4f4;
   padding-top: 1px;
   margin-left: 5px;
 }
@@ -724,7 +776,7 @@ p {
 .match-item .set .set-5 {
   width: 22px;
   height: 20px;
-  background: #F3F4F4;
+  background: #f3f4f4;
   padding-top: 1px;
   margin-left: 5px;
 }
@@ -749,6 +801,8 @@ p {
 .match-item .match-details {
   display: flex;
   justify-content: space-between;
+  padding-left: 15px;
+  padding-right: 15px;
 }
 
 .match-item .match-details .match-details-left {
@@ -766,8 +820,8 @@ p {
 .match-item .set-percent .percent-sub-right {
   display: block;
   padding: 10px 10px 10px 0;
-  border-top: 1px solid #E8EAF2;
-  border-bottom: 1px solid #E8EAF2;
+  border-top: 1px solid #e8eaf2;
+  border-bottom: 1px solid #e8eaf2;
 }
 
 .match-item .player-detail,
@@ -776,6 +830,8 @@ p {
   font-size: 12px;
   line-height: 15px;
   justify-content: space-between;
+  padding-left: 15px;
+  padding-right: 15px;
 }
 
 .match-item .set-percent span {
@@ -785,17 +841,17 @@ p {
 .match-item .set-percent span:nth-child(1),
 .match-item .set-percent span:nth-child(3) {
   font-weight: 500;
-  color: #7C859C;
+  color: #7c859c;
 }
 
 .match-item .set-percent .percent-sub-left span:nth-child(2) {
   font-weight: bold;
-  color: #53AA0B;
+  color: #53aa0b;
 }
 
 .match-item .set-percent .percent-sub-right span:nth-child(2) {
   font-weight: bold;
-  color: #D54E45;
+  color: #d54e45;
 }
 
 .match-item .set-percent .lose-win,
@@ -820,28 +876,28 @@ p {
 .match-item .breaks-lost span:nth-child(1),
 .match-item .games-hold span:nth-child(1) {
   font-weight: 500;
-  color: #7C859C;
+  color: #7c859c;
 }
 
-.match-item .breaks-won span:nth-child(2){
+.match-item .breaks-won span:nth-child(2) {
   font-weight: bold;
-  color: #53AA0B;
+  color: #53aa0b;
 }
 
-.match-item .breaks-lost span:nth-child(2){
+.match-item .breaks-lost span:nth-child(2) {
   font-weight: bold;
-  color: #D54E45;
+  color: #d54e45;
 }
 
-.match-item .games-hold span:nth-child(2){
+.match-item .games-hold span:nth-child(2) {
   font-weight: bold;
-  color: #474D5C;
+  color: #474d5c;
 }
 
 .match-item .match-detail {
   margin-top: 10px;
 }
- 
+
 .match-item .match-detail .opponent-detail,
 .match-item .match-detail .match-sets,
 .match-item .match-detail .opponent-detail .break-hold-detail {
@@ -867,16 +923,20 @@ p {
   padding-top: 2px;
 }
 
-.match-item .match-detail .opponent-detail .break-hold-detail .opponent-ranking {
+.match-item
+  .match-detail
+  .opponent-detail
+  .break-hold-detail
+  .opponent-ranking {
   color: #fff;
-  background-color: #474D5C;
+  background-color: #474d5c;
 }
 
 .match-item .match-detail .match-sets {
   text-align: center;
   justify-content: space-between;
   font-weight: bold;
-  color: #FFFFFF;
+  color: #ffffff;
   padding-top: 5px;
 }
 
@@ -886,16 +946,34 @@ p {
 }
 
 .match-item .match-detail .match-sets-score div:nth-child(2) {
-  color: #474D5C;
+  color: #474d5c;
   padding-top: 5px;
 }
 
+.match-item .average-ranks {
+  display: block;
+  padding-top: 7px;
+  padding-left: 5px;
+}
+
+.match-item .average-ranks .average-raw {
+  float: left;
+}
+
+.match-item .average-ranks .average-ral {
+  float: right;
+}
+
+.match-item .average-ranks span:nth-child(2) {
+  padding-left: 3px;
+}
+
 .bg-won {
-  background-color: #53AB0B;
+  background-color: #53ab0b;
 }
 
 .bg-lose {
-  background-color: #D54E46;
+  background-color: #d54e46;
 }
 
 .loading {
@@ -934,19 +1012,19 @@ p {
 }
 
 .history .match-item .winner {
-  background-color: #53AB0B;
+  background-color: #53ab0b;
 }
 
 .history .match-item .loser {
-  background-color: #D54E46;
+  background-color: #d54e46;
 }
 
 .match-item .ranking {
-  background-color: #474D5C;
+  background-color: #474d5c;
 }
 
 .match-time {
-  color: #474D5C;
+  color: #474d5c;
 }
 .account-setting {
   width: 50%;
@@ -956,12 +1034,12 @@ p {
 .account-setting h3,
 .account-setting .account-edit-title,
 .account-setting .account-setting-sub-title {
-  color: #474D5C;
+  color: #474d5c;
 }
 
 .account-setting .sub-settings {
-  background: #FFFFFF;
-  border: 2px solid #E8EAF2;
+  background: #ffffff;
+  border: 2px solid #e8eaf2;
   box-sizing: border-box;
   box-shadow: 0px 10px 15px rgba(146, 148, 162, 0.1);
   border-radius: 4px;
@@ -975,7 +1053,7 @@ p {
 }
 
 .account-setting .account-edit {
-  border-top: 1px solid #E8EAF2;
+  border-top: 1px solid #e8eaf2;
   padding: 10px 30px 10px 30px;
 }
 
@@ -985,7 +1063,7 @@ p {
 
 .account-setting .account-toggle .account-values-left span {
   font-weight: normal;
-  color: #7C859C;
+  color: #7c859c;
 }
 
 .account-setting .account-toggle .account-edit-button {
@@ -1012,11 +1090,11 @@ p {
 
 .account-setting .account-edit .account-edit-defaltValue,
 .account-cancel-button {
-  color: #7C859C;
+  color: #7c859c;
 }
 
 .account-edit-button {
-  color: #53AB0B;
+  color: #53ab0b;
   cursor: pointer;
   padding: 4px 20px;
   margin-top: 10px;
@@ -1029,7 +1107,7 @@ p {
 }
 
 .account-save-button {
-  background-color: #89D46A;
+  background-color: #89d46a;
   border-radius: 4px;
   color: #fff;
   padding: 4px 20px;
@@ -1037,13 +1115,13 @@ p {
 }
 
 .account-save-button:hover {
-  background-color: #53AB0B;
+  background-color: #53ab0b;
 }
 
 .account-cancel-button {
   padding-top: 5px;
   cursor: pointer;
-  color: #7C859C;
+  color: #7c859c;
 }
 
 .account-cancel-button:hover {
@@ -1056,12 +1134,12 @@ p {
 
 .account-setting .form-group .form-control {
   font-size: 16px;
-  border: 1px solid #E8EAF2;
-  background-color: #F9FAFC;
+  border: 1px solid #e8eaf2;
+  background-color: #f9fafc;
 }
 
 .account-setting .form-group .form-control:focus {
-  border-color: #E8EAF2 !important;
+  border-color: #e8eaf2 !important;
 }
 
 .account-values-left {
@@ -1182,7 +1260,7 @@ p {
   }
   #topnav .navigation-menu > li > a {
     padding-top: 6px;
-    padding-bottom: 6px;
+    padding-bottom: 4px;
   }
   #topnav .navigation-menu > li.last-elements .submenu {
     left: auto;
@@ -1328,10 +1406,6 @@ p {
     letter-spacing: 2px;
     color: #8492a6;
   }
-  #topnav .navigation-menu > li > a {
-    color: #3c4858;
-    padding: 10px 20px;
-  }
   #topnav .navigation-menu > li > a:after {
     position: absolute;
     right: 15px;
@@ -1435,7 +1509,7 @@ p {
   align-self: center;
   position: relative;
   background-position: center center;
-  background-color: #F9FAFC;
+  background-color: #f9fafc;
 }
 
 @media (min-width: 769px) {
@@ -1470,11 +1544,11 @@ p {
 }
 
 .custom-datepicker {
-  background: #FFFFFF;
-  border: 1px solid #E8EAF2;
+  background: #ffffff;
+  border: 1px solid #e8eaf2;
   box-sizing: border-box;
   border-radius: 4px;
-  color: #474D5C;
+  color: #474d5c;
 }
 
 .custom-datepicker .custom-datepicker-date {
@@ -1482,11 +1556,10 @@ p {
 }
 
 .custom-datepicker i {
-  color: #ACB5C9;
+  color: #acb5c9;
   padding-top: 9px;
   padding-right: 10px;
 }
-
 
 .coming-soon,
 .maintenance,
@@ -1516,11 +1589,11 @@ p {
 }
 
 .footer {
-  background: #E5E7EF;
+  background: #e5e7ef;
   padding: 30px 0;
   position: relative;
-  color: #474D5C;
-  border-top: 1px solid #D2D6E5;
+  color: #474d5c;
+  border-top: 1px solid #d2d6e5;
 }
 
 .footer .logo-footer {
@@ -1542,9 +1615,9 @@ p {
   align-items: center;
 }
 .footer .foot-subscribe .form-control {
-  background-color: #D2D6E5;
+  background-color: #d2d6e5;
   border-radius: 4px;
-  color: #474D5C;
+  color: #474d5c;
   margin-left: 20px;
   width: 400px;
 }
@@ -1553,12 +1626,12 @@ p {
   -webkit-box-shadow: none;
   box-shadow: none;
   background-color: #fff;
-  color: #474D5C;
-  border-color: #474D5C !important;
+  color: #474d5c;
+  border-color: #474d5c !important;
 }
 
 .footer .foot-subscribe .form-control::placeholder {
-  color: #474D5C;
+  color: #474d5c;
 }
 
 .footer .foot-subscribe.foot-white .form-control {
@@ -1586,8 +1659,8 @@ p {
 }
 
 .footer .foot-subscribe .btn {
-  background-color: #89D46A;
-  border-color: #89D46A;
+  background-color: #89d46a;
+  border-color: #89d46a;
   top: 5px;
   height: 28px;
   border-radius: 2px;
@@ -1598,12 +1671,12 @@ p {
 
 .footer .foot-subscribe .btn:hover,
 .footer .foot-subscribe .btn:focus {
-  background-color: #53AB0B;
+  background-color: #53ab0b;
   border-radius: 2px;
 }
 
 .footer .text-foot {
-  color: #474D5C;
+  color: #474d5c;
 }
 
 .footer .footer-list {
@@ -1629,7 +1702,7 @@ p {
 
 .footer.footer-border,
 .footer.footer-bar {
-  border-top: 1px solid #D2D6E5;
+  border-top: 1px solid #d2d6e5;
 }
 
 .footer.footer-bar {
@@ -1655,7 +1728,7 @@ p {
 }
 
 .footer .footer-language .active {
-  background-color: #7C859C;
+  background-color: #7c859c;
 }
 
 .footer.footer-bar .footer-link .text-foot {
@@ -1694,6 +1767,10 @@ p {
   .footer .foot-subscribe .input-group-append {
     margin-left: -123px;
   }
+  .col-lg-4 {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+  }
 }
 @media (min-width: 991px) and (max-width: 1024px) {
   .match-box .sub-left,
@@ -1709,6 +1786,10 @@ p {
   }
   .footer .foot-subscribe .input-group-append {
     margin-left: 0;
+  }
+  .col-lg-4 {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
   }
 }
 @media (min-width: 768px) and (max-width: 991px) {
@@ -1739,6 +1820,11 @@ p {
   .payment-logos-pic img {
     width: 480px;
   }
+  .login-containers {
+    padding: 0 !important;
+    margin-right: -60px;
+    margin-left: -55px;
+  }
 }
 @media (min-width: 325px) and (max-width: 576px) {
   .match-box .sub-left,
@@ -1756,6 +1842,11 @@ p {
   .description .sub-title h1 {
     font-size: 25px !important;
   }
+  .login-containers {
+    padding: 0 !important;
+    margin-right: -60px;
+    margin-left: -55px;
+  }
 }
 @media (max-width: 325px) {
   .match-box .sub-left,
@@ -1768,10 +1859,21 @@ p {
     width: 280px;
   }
   .footer .foot-subscribe .form-control {
-    margin-right: -10px !important;
+    margin-right: -3px !important;
   }
   .description .sub-title h1 {
     font-size: 25px !important;
+  }
+  .login-containers {
+    padding: 0 !important;
+    margin-right: -60px;
+    margin-left: -55px;
+  }
+  .match-item .player-detail .break-hold-detail div {
+    margin-right: 0;
+  }
+  .match-item .break-hold-detail span:nth-child(2) {
+    margin-left: 2px;
   }
 }
 @media (max-width: 991px) {
@@ -1792,6 +1894,67 @@ p {
   }
 }
 @media (max-width: 576px) {
+  #topnav .navigation-menu > li {
+    margin: 0;
+  }
+  #topnav .navigation-menu .navigation-item a {
+    padding-left: 3px;
+    padding-right: 2px;
+    font-size: 10px;
+    padding-top: 10px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+  }
+  #topnav #account .navigation-menu .navigation-item a {
+    margin-top: 0;
+    padding-bottom: 8px;
+  }
+  .match-item .compare-filters .rank-diff div,
+  .match-item .compare-filters .break-diff div,
+  .match-item .compare-filters .rank-opponent div,
+  .match-item .compare-filters .limit-count div {
+    margin-left: 2px;
+  }
+  .match-item .compare-filters {
+    padding-right: 0;
+    padding-left: 0;
+  }
+  .match-item .compare-filters .left-box,
+  .match-item .compare-filters .right-box {
+    width: 50%;
+  }
+  .match-item .players-detail-surface div {
+    margin-right: 2px;
+  }
+  .match-item .set .set-title {
+    word-break: normal;
+  }
+  .match-item .set .set-all {
+    margin-left: 3px;
+  }
+  .match-item .set .set-1,
+  .match-item .set .set-2,
+  .match-item .set .set-3,
+  .match-item .set .set-4,
+  .match-item .set .set-5 {
+    margin-left: 2px;
+  }
+  .vs span {
+    word-break: normal;
+  }
+  .match-item .compare-filters .center-box {
+    width: 50%;
+    justify-content: center;
+  }
+  .match-item .set-percent span {
+    margin-right: 0;
+  }
+  .match-item .win-win,
+  .match-item .win-lose,
+  .match-item .lose-win,
+  .match-item .lose-lose {
+    display: grid;
+  }
   .footer .foot-subscribe .form-control {
     margin-right: 0px;
   }
@@ -1825,6 +1988,9 @@ p {
   .footer .foot-subscribe .form-control {
     width: 0;
     margin-right: -20px;
+  }
+  .login-containers {
+    padding: 20px 130px !important;
   }
 }
 @media (max-width: 1024px) {
@@ -1864,11 +2030,11 @@ p {
   margin-top: -110px;
 }
 
-.e-tooltip-wrap.e-popup > div:nth-child(2) > div:nth-child(1){
+.e-tooltip-wrap.e-popup > div:nth-child(2) > div:nth-child(1) {
   border-bottom: 0 !important;
 }
 
-.e-tooltip-wrap.e-popup > div:nth-child(2) > div:nth-child(2){
+.e-tooltip-wrap.e-popup > div:nth-child(2) > div:nth-child(2) {
   color: #000 !important;
   border: 0 !important;
 }
@@ -1877,37 +2043,39 @@ p {
   content: '\e919' !important;
 }
 
-.e-tooltip-wrap.e-popup > div:nth-child(2){
+.e-tooltip-wrap.e-popup > div:nth-child(2) {
   top: 71px !important;
   height: 10px !important;
 }
 .login {
-  width:30%;
+  width: 30%;
   left: 35%;
   top: 30%;
   position: absolute;
 }
 .login-containers {
-  background-color: #F9FAFC;
+  background-color: #f9fafc;
   padding: 20px 40px;
   color: #3c4858;
   font-weight: 600;
-  box-shadow: 7px -8px 11px -5px rgba(#195190FF);
+  box-shadow: 7px -8px 11px -5px rgba(#195190ff);
 }
-.signUp, .signIn{
-  background-color: #F9FAFC;
-  width:50%;
+.signUp,
+.signIn {
+  background-color: #f9fafc;
+  width: 50%;
   font-size: 22px;
   color: #3c4858;
   padding: 10px;
   text-align: center;
 }
-.signIn:hover, .signUp:hover {
+.signIn:hover,
+.signUp:hover {
   text-decoration: none;
   color: #3c4858;
 }
 .activeLink {
   color: #3c4858;
-  background-color: #195190FF;
+  background-color: #195190ff;
 }
 /*# sourceMappingURL=style.css.map */

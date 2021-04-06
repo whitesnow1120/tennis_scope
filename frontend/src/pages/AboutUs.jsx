@@ -1,9 +1,9 @@
 import React from 'react';
 
-import Hero from '../components/Hero';
 import tennisPic from '../assets/img/tennis_pic.png';
 import machineEffortPic from '../assets/img/machine_effort.png';
 import humanIntuitiion from '../assets/img/human_intuition.png';
+import Hero from '../components/Hero';
 
 const AboutUs = () => {
   return (
@@ -65,7 +65,7 @@ const AboutUs = () => {
         <div className="row mb-4 machine-human">
           <div className="col-lg-5 col-md-5 col-sm-12 col-xs-12 mt-4 padding-bottom machine-effort">
             <div className="">
-              <div className='text-center mt-4'>
+              <div className="text-center mt-4">
                 <img src={machineEffortPic} alt="machine effect" />
               </div>
               <div className="text-center sub-title mt-3">
@@ -83,7 +83,7 @@ const AboutUs = () => {
           </div>
           <div className="col-lg-5 col-md-5 col-sm-12 col-xs-12 mt-4 padding-bottom human-intuition">
             <div className="">
-              <div className='text-center mt-4'>
+              <div className="text-center mt-4">
                 <img src={humanIntuitiion} alt="human intuituion" />
               </div>
               <div className="text-center sub-title mt-3">

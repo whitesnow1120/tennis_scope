@@ -1,10 +1,9 @@
 import React from 'react';
 import Toggle from 'react-toggle';
-import "react-toggle/style.css"
-import PropTypes from 'prop-types';
-
+import 'react-toggle/style.css';
 import { useDispatch } from 'react-redux';
 import { GET_ACCOUNT_INFO } from '../store/actions/types';
+import PropTypes from 'prop-types';
 
 const AccountToggle = (props) => {
   const { title, name, checked, accountInfo } = props;
@@ -13,7 +12,7 @@ const AccountToggle = (props) => {
   const handleToggle = () => {
     dispatch({
       type: GET_ACCOUNT_INFO,
-      payload: {...accountInfo, [name]: !checked },
+      payload: { ...accountInfo, [name]: !checked },
     });
   };
 
@@ -26,10 +25,7 @@ const AccountToggle = (props) => {
       </div>
       <div className="account-values-right account-action">
         <div className="account-edit-button">
-          <Toggle
-            defaultChecked={checked}
-            onChange={handleToggle}
-          />
+          <Toggle defaultChecked={checked} onChange={handleToggle} />
         </div>
       </div>
     </div>

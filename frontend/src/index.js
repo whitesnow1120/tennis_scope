@@ -5,11 +5,10 @@ import ScrollUpButton from 'react-scroll-up-button';
 import { applyMiddleware, createStore, combineReducers } from 'redux';
 import thunk from 'redux-thunk';
 import { Provider } from 'react-redux';
-import reducer from './store/reducers';
 
+import reducer from './store/reducers';
 import Header from './components/Header';
 import Footer from './components/Footer';
-
 import SignIn from './pages/Auth/SignIn';
 import InPlay from './pages/InPlay';
 import Upcoming from './pages/Upcoming';

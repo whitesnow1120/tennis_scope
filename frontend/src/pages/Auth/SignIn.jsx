@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Button, Form, FormGroup, Label, Input } from 'reactstrap';
 import { Redirect } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import { Button, Form, FormGroup, Label, Input } from 'reactstrap';
 
 import { GET_USER_STATUS } from '../../store/actions/types';
 import { login } from '../../apis';

@@ -8,8 +8,13 @@ use DatePeriod;
 use DateInterval;
 
 class Helper {
+	/**
+	 * Get index of game points
+	 * @param 	string 	$game
+	 * @return 	int 	$index
+	 */
 	public static function getGamesPoint($game) {
-		if ($game == "love" || (int)$game == 10 || (int)$game == 0) {
+		if ($game == "love" || (int)$game == 0) {
 			return 0;
 		} else if ((int)$game == 15) {
 			return 1;
@@ -21,6 +26,11 @@ class Helper {
 		return -1;
 	}
 
+	/**
+	 * Make the correct detail including tie-break
+	 * @param 	string $detail
+	 * @return 	string $new_detail
+	 */
 	public static function getCorrectDetail($detail) {
 		if ($detail == "") {
 			return [];
@@ -43,9 +53,11 @@ class Helper {
 	}
 
 	/**
-	 * Get the start and end games for player and opponents
+	 * Get sub details for player
+	 * @param array $matches
+	 * @param int $player_id
 	 */
-	public static function getSetsPerformanceDetail($matches, $player_id) {
+	public static function getPlayersSubDetail($matches, $player_id) {
 		$sets = $matches;
 		$i = 0;
 		foreach ($matches as $match) {
@@ -58,8 +70,10 @@ class Helper {
 
 			if ($match["player1_id"] == $player_id) {
 				$home = 1;
+				$sets[$i]["home"] = "p";
 			} else {
 				$home = 2;
+				$sets[$i]["home"] = "o";
 			}
 			$j = 0;
 			$score_count = array();
@@ -78,7 +92,7 @@ class Helper {
 
 				$score_cnt = 0;
 
-				$sets[$i]["sets"][$j]["brw"] = [0,0,0,0]; // 10, 15, 30, 40
+				$sets[$i]["sets"][$j]["brw"] = [0,0,0,0]; // love, 15, 30, 40
 				$sets[$i]["sets"][$j]["brl"] = [0,0,0,0];
 				$sets[$i]["sets"][$j]["gah"] = [0,0,0,0];
 				
@@ -134,62 +148,62 @@ class Helper {
 								}
 							}
 						}
-					}
 
-					// calculate the depth
-					$depths = array();
-					$depths[0] = 0;
-					for ($n = 1; $n < $score_cnt + 1; $n ++) {
-						if ($player_scores[$n] == 6 || $opponent_scores[$n] == 6) {
-							break;
-						} else {
-							$depths[$n] = $player_scores[$n] - $opponent_scores[$n];
+						// calculate the depth
+						$depths = array();
+						$depths[0] = 0;
+						for ($n = 1; $n < $score_cnt + 1; $n ++) {
+							if ($player_scores[$n] == 6 || $opponent_scores[$n] == 6) {
+								break;
+							} else {
+								$depths[$n] = $player_scores[$n] - $opponent_scores[$n];
+							}
 						}
-					}
-					if ($player_score > $opponent_score) {
-						$depth = max($depths);
-					} else {
-						$depth = min($depths);
-					}
-					$sets[$i]["sets"][$j]["depth"] = $depth;
+						if ($player_score > $opponent_score) {
+							$depth = max($depths);
+						} else {
+							$depth = min($depths);
+						}
+						$sets[$i]["sets"][$j]["depth"] = $depth;
 
-					// set performance
-					for ($n = 0; $n < $score_cnt; $n ++) {
-						$game_depth = $player_scores[$n] - $opponent_scores[$n];
-						// set depth
-						if ($game_depth == 2) {
+						// set performance
+						for ($n = 0; $n < $score_cnt; $n ++) {
+							$game_depth = $player_scores[$n] - $opponent_scores[$n];
+							// set depth
+							if ($game_depth == 2) {
+								if ($player_score > $opponent_score) {
+									$ww = 1;
+								} else {
+									$wl = 1;
+								}
+								break;
+							} else if ($game_depth == -2) {
+								if ($player_score > $opponent_score) {
+									$lw = 1;
+								} else {
+									$ll = 1;
+								}
+								break;
+							}
+						}
+						if ($ww == 0 && $wl == 0 && $lw == 0 && $ll == 0) {
 							if ($player_score > $opponent_score) {
 								$ww = 1;
 							} else {
-								$wl = 1;
-							}
-							break;
-						} else if ($game_depth == -2) {
-							if ($player_score > $opponent_score) {
-								$lw = 1;
-							} else {
 								$ll = 1;
 							}
-							break;
 						}
+						$sets[$i]["sets"][$j]["performance"] = [
+							"ww" => $ww,
+							"wl" => $wl,
+							"lw" => $lw,
+							"ll" => $ll,
+						];
+						$ww = 0;
+						$wl = 0;
+						$lw = 0;
+						$ll = 0;
 					}
-					if ($ww == 0 && $wl == 0 && $lw == 0 && $ll == 0) {
-						if ($player_score > $opponent_score) {
-							$ww = 1;
-						} else {
-							$ll = 1;
-						}
-					}
-					$sets[$i]["sets"][$j]["performance"] = [
-						"ww" => $ww,
-						"wl" => $wl,
-						"lw" => $lw,
-						"ll" => $ll,
-					];
-					$ww = 0;
-					$wl = 0;
-					$lw = 0;
-					$ll = 0;
 				}
 				$j ++;
 			}
@@ -199,88 +213,9 @@ class Helper {
 	}
 
 	/**
-	 * Get the start and end games for only opponents
-	 */
-	public static function getSetsOpponents($matches, $player_id) {
-		$sets = array();
-		$i = 0;
-		foreach ($matches as $match) {
-			if ($match["detail"] != "" && $match["scores"] != "" && $match["scores"] != "0-0" && $match["scores"] != "0-0,") {
-				$sets[$i] = $match;
-				$details = Helper::getCorrectDetail($match["detail"]);
-				$total_details_count = count($details);
-	
-				$set_scores = explode(",", $match["scores"]);
-				$empty_array = array_fill(0, 5-count($set_scores), "0-0");
-				$set_scores = array_merge($set_scores, $empty_array);
-	
-				if ($match["player1_id"] == $player_id) {
-					$home = 1;
-				} else {
-					$home = 2;
-				}
-				$j = 0;
-				$score_count = array();
-				$score_count[$j] = 0;
-	
-				foreach ($set_scores as $set_score) {
-					$player_scores = array();
-					$opponent_scores = array();
-					$player_scores[0] = 0;
-					$opponent_scores[0] = 0;
-	
-					$sets[$i]["brw"][$j] = [0,0,0,0]; // 10, 15, 30, 40
-					$sets[$i]["brl"][$j] = [0,0,0,0];
-					$sets[$i]["gah"][$j] = [0,0,0,0];
-					
-					$score_count[$j] = array_key_exists($j, $score_count) ? $score_count[$j] : 0;
-					$scores = explode("-", $set_score);
-					$score_0 = array_key_exists(0, $scores) ? (int)$scores[0] : 0;
-					$score_1 = array_key_exists(1, $scores) ? (int)$scores[1] : 0;
-					if (!($score_0 == 0 && $score_1 == 0)) {
-						$score_count[$j + 1] = $score_count[$j] + $score_0 + $score_1;
-	
-						if ($home == 1) {
-							$player_score = $score_0;
-							$opponent_score = $score_1;
-						} else {
-							$player_score = $score_1;
-							$opponent_score = $score_0;
-						}
-	
-						// set BRW, BRL, GAH
-						for ($k = $score_count[$j]; $k < $score_count[$j + 1]; $k ++) {
-							if ($k < $total_details_count) {
-								$set_details = explode(":", $details[$k]);
-								if (count($set_details) == 4 && ($set_details[1] == "b" || $set_details[1] == "h")) {
-									$game = Helper::getGamesPoint($set_details[3]);
-									if ($game != -1) {
-										if ((int)$set_details[2] == $home) {
-											if ($set_details[1] == "b") {
-												$sets[$i]["brw"][$j][$game] ++;
-											} else {
-												$sets[$i]["gah"][$j][$game] ++;
-											}
-										} else {
-											if ($set_details[1] == "b") {
-												$sets[$i]["brl"][$j][$game] ++;
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-					$j ++;
-				}
-				$i ++;
-			}
-		}
-		return $sets;
-	}
-
-	/**
-	 * 00:00:00 ~ 23:59:59
+	 * Get time period (human date -> timestamp) 00:00:00 ~ 23:59:59
+	 * @param 	string 	$date
+	 * @return 	array 	$times
 	 */
   	public static function getTimePeriod($date) {
 		if (!$date) {
@@ -307,14 +242,15 @@ class Helper {
 
 	/**
 	 * Import all historical data
+	 * @param string $start_date
 	 */
-  	public static function importHistoryData($startDate=NULL) {
+  	public static function importHistoryData($start_date=NULL) {
     	$start = microtime(true);
-    	if (!$startDate) {
-      		$startDate = "20210324";
+    	if (!$start_date) {
+      		$start_date = "20180101";
     	}
     	$period = new DatePeriod(
-			new DateTime($startDate),
+			new DateTime($start_date),
 			new DateInterval('P1D'),
 			date("Ymd")
     	);
@@ -325,14 +261,48 @@ class Helper {
     	$execution_time = (microtime(true) - $start) / 60;
     	echo "Total Execution Time:  " . $execution_time. "  Mins";
   	}
-
+	
+	/**
+	 * Get matches (add some fields)
+	 * @param 	array $matches_data_array
+	 * @param 	array $players
+	 * @return 	array $matches
+	 */
 	public static function getMatchesResponse($matches_data_array, $players) {
         $matches = array();
         $i = 0;
         foreach ($matches_data_array as $matches_data) {
             foreach ($matches_data as $data) {
-                $matches[$i] = $data;
-                switch (trim($data->surface)) {
+                if (gettype($data) == "object") {
+                    $data_id = $data->id;
+                    $data_surface = $data->surface;
+                    $data_event_id = $data->event_id;
+                    $data_player1_id = $data->player1_id;
+                    $data_player1_name = $data->player1_name;
+                    $data_player1_odd = $data->player1_odd;
+                    $data_player2_id = $data->player2_id;
+                    $data_player2_name = $data->player2_name;
+                    $data_player2_odd = $data->player2_odd;
+                    $data_scores = $data->scores;
+                    $data_time_status = $data->time_status;
+                    $data_time = $data->time;
+                    $data_detail = $data->detail;
+                } else {
+                    $data_id = $data["id"];
+                    $data_surface = $data["surface"];
+                    $data_event_id = $data["event_id"];
+                    $data_player1_id = $data["player1_id"];
+                    $data_player1_name = $data["player1_name"];
+                    $data_player1_odd = $data["player1_odd"];
+                    $data_player2_id = $data["player2_id"];
+                    $data_player2_name = $data["player2_name"];
+                    $data_player2_odd = $data["player2_odd"];
+                    $data_scores = $data["scores"];
+                    $data_time_status = $data["time_status"];
+                    $data_time = $data["time"];
+                    $data_detail = $data["detail"];
+                }
+                switch (trim($data_surface)) {
                     case "Clay":
                         $surface = "CLY";
                         break;
@@ -346,35 +316,35 @@ class Helper {
                         $surface = "GRS";
                         break;
                     default:
-                        $surface = $data->surface;
+                        $surface = $data_surface;
                         break;
                 }
     
                 $matches[$i] = [
-                    'id'                =>  $data->id,
-                    'event_id'          =>  $data->event_id,
-                    'player1_id'        =>  $data->player1_id,
-                    'player1_name'      =>  trim($data->player1_name),
-                    'player1_odd'       =>  $data->player1_odd,
+                    'id'                =>  $data_id,
+                    'event_id'          =>  $data_event_id,
+                    'player1_id'        =>  $data_player1_id,
+                    'player1_name'      =>  $data_player1_name,
+                    'player1_odd'       =>  $data_player1_odd,
                     'player1_ranking'   =>  "-",
-                    'player2_id'        =>  $data->player2_id,
-                    'player2_name'      =>  trim($data->player2_name),
-                    'player2_odd'       =>  $data->player2_odd,
+                    'player2_id'        =>  $data_player2_id,
+                    'player2_name'      =>  $data_player2_name,
+                    'player2_odd'       =>  $data_player2_odd,
                     'player2_ranking'   =>  "-",
                     'surface'           =>  $surface,
-                    'scores'            =>  trim($data->scores),
-                    'time_status'       =>  $data->time_status,
-                    'time'              =>  $data->time,
-                    'detail'            =>  $data->detail
+                    'scores'            =>  $data_scores,
+                    'time_status'       =>  $data_time_status,
+                    'time'              =>  $data_time,
+                    'detail'            =>  $data_detail
                 ];
     
                 foreach ($players as $player) {
-                    if ($data->player1_id == $player->api_id) {
+                    if ($data_player1_id == $player->api_id) {
                         $matches[$i]["player1_name"] = $player->name;
                         $matches[$i]["player1_ranking"] = (int)$player->ranking;
                     }
     
-                    if ($data->player2_id == $player->api_id) {
+                    if ($data_player2_id == $player->api_id) {
                         $matches[$i]["player2_name"] = $player->name;
                         $matches[$i]["player2_ranking"] = (int)$player->ranking;
                     }
@@ -388,7 +358,6 @@ class Helper {
 	/**
 	 * Pre calculation for Upcoming & Inplay
 	 */
-
 	public static function preCalculation() {
 		$start_time = microtime(true);
 		$log = "Start: " . date("Y-m-d H:i:s");
@@ -438,7 +407,6 @@ class Helper {
 				$player2_id = $ids["player2_id"];
 				$bucket_players_table = "t_bucket_players_" . $player1_id . "_" . $player2_id;
 				if (!Schema::hasTable($bucket_players_table)) {
-					// Code to create table
 					Schema::create($bucket_players_table, function($table) {
 						$table->increments("id");
 						$table->integer("event_id");
@@ -462,27 +430,10 @@ class Helper {
 						$table->string("surface", 50)->nullable();
 						$table->integer("time");
 						$table->text("detail")->nullable();
+						$table->string("home", 1);
 					});
 				}
 
-				// $bucket_opponents_table = "t_bucket_opponents_" . $player1_id . "_" . $player2_id;
-				// if (!Schema::hasTable($bucket_opponents_table)) {
-				// 	// Code to create table
-				// 	Schema::create($bucket_opponents_table, function($table) {
-				// 		$table->increments("id");
-				// 		$table->integer("event_id");
-				// 		$table->integer("o_id");
-				// 		$table->string("o_name", 100);
-				// 		$table->integer("o_ranking")->nullable();
-				// 		$table->float("o_odd")->nullable();
-				// 		$table->json("o_brw_set");
-				// 		$table->json("o_brl_set");
-				// 		$table->json("o_gah_set");
-				// 		$table->string("surface", 100)->nullable();
-				// 		$table->integer("time");
-				// 		$table->integer("p_id"); // not oo_id [player1_id or player2_id]
-				// 	});
-				// }
 				Helper::preCalculate($bucket_players_table, $player1_id, $player2_id, $history_tables, $players);
 			}
 		}
@@ -494,66 +445,12 @@ class Helper {
 	}
 
 	/**
-     * Get opponent BRW, BRL, GAH
-     */
-    public static function setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player_id) {
-		// check opponent id is exist in t_bucket_opponents table
-		$o_id = $opponent_info["o_id"];
-		$matches_data_array = array();
-		foreach ($history_tables as $table) {
-			// filtering by opponent ids
-			$matches_data = DB::table($table->tablename)->where('time_status', 3)
-										->where(function($query) use ($o_id) {
-											$query->where('player1_id', $o_id)
-											->orWhere('player2_id', $o_id);
-										})->get();
-
-			$match_array = json_decode(json_encode($matches_data), true);
-			$matches_data_array = array_merge($matches_data_array, $match_array);
-		}
-		
-		$opponents_details = Helper::getSetsOpponents($matches_data_array, $o_id);
-		foreach ($opponents_details as $data) {
-			switch (trim($data["surface"])) {
-				case "Clay":
-					$surface = "CLY";
-					break;
-				case "Hardcourt outdoor":
-					$surface = "HRD";
-					break;
-				case "Hardcourt indoor" || "Carpet indoor":
-					$surface = "IND";
-					break;
-				case "Grass":
-					$surface = "GRS";
-					break;
-				default:
-					$surface = $data["surface"];
-					break;
-			}
-			$db_data = [
-				"event_id" 		=> $data["event_id"],
-				"o_id" 			=> $o_id,
-				"o_name" 		=> $opponent_info["o_name"],
-				"o_odd" 		=> $data["player1_id"] == $o_id ? $data["player2_odd"] : $data["player1_odd"],
-				"o_ranking" 	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
-				"o_brw_set" 	=> json_encode($data["brw"]),
-				"o_brl_set" 	=> json_encode($data["brl"]),
-				"o_gah_set" 	=> json_encode($data["gah"]),
-				"surface" 		=> $surface,
-				"time" 			=> $data["time"],
-				"p_id" 			=> $player_id,
-			];
-			DB::table($bucket_opponents_table)
-				->updateOrInsert(
-					["event_id" => $data["event_id"]],
-					$db_data
-				);
-		}
-    }
-
-	/**
-	 * Pre calculate matches for player1_id and player2 id
+	 * Pre calculate matches for player1_id and player2_id
+	 * @param array $bucket_players_table
+	 * @param int $player1_id
+	 * @param int $player2_id
+	 * @param array $history_tables
+	 * @param array $players
 	 */
 	public static function preCalculate($bucket_players_table, $player1_id, $player2_id, $history_tables, $players) {
 		$matches1_array = array();
@@ -580,15 +477,15 @@ class Helper {
 		$matches2 = Helper::getMatchesResponse($matches2_array, $players);
 
 		// add sets
-        $matches1_set = Helper::getSetsPerformanceDetail($matches1, $player1_id);
-        $matches2_set = Helper::getSetsPerformanceDetail($matches2, $player2_id);
+        $matches1_set = Helper::getPlayersSubDetail($matches1, $player1_id);
+        $matches2_set = Helper::getPlayersSubDetail($matches2, $player2_id);
 
 		// add breaks to the players array
         $matches_1 = array();
         $matches_2 = array();
 
         foreach ($matches1_set as $data) {
-			if ($data["scores"] != "" && $data["scores"] != "0-0" && $data["scores"] != "0-0,") {
+			if ($data["scores"] != "") {
 				$brw = array();
 				$brl = array();
 				$gah = array();
@@ -649,18 +546,18 @@ class Helper {
 					"o_name"	=> $opponent_info["o_name"],
 					"o_odd"		=> $opponent_info["o_odd"],
 					"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
+					"home"		=> $data["home"],
 				];
 				DB::table($bucket_players_table)
 					->updateOrInsert(
 						["event_id" => $data["event_id"]],
 						$db_data
 					);
-				// Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player1_id);
 			}
 		}
 
         foreach ($matches2_set as $data) {
-			if ($data["scores"] != "" && $data["scores"] != "0-0" && $data["scores"] != "0-0,") {
+			if ($data["scores"] != "") {
 				$brw = array();
 				$brl = array();
 				$gah = array();
@@ -722,19 +619,21 @@ class Helper {
 					"o_name"	=> $opponent_info["o_name"],
 					"o_odd"		=> $opponent_info["o_odd"],
 					"o_ranking"	=> $opponent_info["o_ranking"] == "-" ? NULL : $opponent_info["o_ranking"],
+					"home"		=> $data["home"],
 				];
 				DB::table($bucket_players_table)
 					->updateOrInsert(
 						["event_id" => $data["event_id"]],
 						$db_data
 					);
-				// Helper::setOpponentsDetail($bucket_opponents_table, $opponent_info, $history_tables, $player2_id);
 			}
         }
 	}
 
 	/**
 	 * Import the historical data of a specific day
+	 * @param string $date
+	 * @param bool $once
 	 */
   	public static function updateDB($date=false, $once=false) {
 		$start_time = microtime(true);
@@ -750,6 +649,7 @@ class Helper {
 		$log = substr($date, 0, 4) . "-" . substr($date, 4, 2) . "-" . substr($date, 6, 2) . ":  Start Time: " . date("Y-m-d H:i:s");
     	// Check Y-m table is exist or not
     	$match_table_name = "t_matches_" . substr($date, 0, 4) . "_" . substr($date, 4, 2);
+		$event_ids = array();
     	if (!Schema::hasTable($match_table_name)) {
       		// Code to create table
       		Schema::create($match_table_name, function($table) {
@@ -767,7 +667,19 @@ class Helper {
 				$table->integer("time");
 				$table->text("detail")->nullable();
 			});
-    	}
+    	} else {
+			// get event ids of current date
+			$d = substr($date, 0, 4) . "-" . substr($date, 4, 2) . "-" . substr($date, 6, 2);
+			$times = Helper::getTimePeriod($d);
+			echo "time[0]: " . $times[0] . "   time[1]: " . $times[1] . "\n";
+			$db_events = DB::table($match_table_name)
+							->select("event_id")
+							->whereBetween('time', [$times[0], $times[1]])
+							->get();
+			foreach ($db_events as $db_event) {
+				array_push($event_ids, $db_event->event_id);
+			}
+		}
 
 		$curl = curl_init();
 		$token = env("API_TOKEN", "");
@@ -793,7 +705,7 @@ class Helper {
 				$history_data = json_decode(curl_exec($curl), true);
         		if (array_key_exists("results", $history_data)) {
           			$history = array_merge($history, $history_data["results"]);
-        		}   
+        		}
         		$request_count ++;
       		}
     	}
@@ -897,32 +809,38 @@ class Helper {
     	}
 
 		if (count($matches) > 0) {
-			// Get Odds
 			foreach ($matches as $event) {
-				$event_id = $event["id"];
-				// Get Odds
-				$url = "https://api.b365api.com/v2/event/odds/summary?token=$token&event_id=$event_id";
-				$request_count ++;
-				curl_setopt($curl, CURLOPT_URL, $url);
-				curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-				$summary = json_decode(curl_exec($curl), true);
-				// Get surface
-				$url = "https://api.b365api.com/v1/event/view?token=$token&event_id=$event_id";
-				$request_count ++;
-				curl_setopt($curl, CURLOPT_URL, $url);
-				curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-				$view = json_decode(curl_exec($curl), true);
-				
+				if (!in_array($event["id"], $event_ids)) {
+					array_push($event_ids, $event["id"]);
+				}
+			}
+		}
+
+		foreach ($event_ids as $event_id) {
+			// Get Odds
+			$url = "https://api.b365api.com/v2/event/odds/summary?token=$token&event_id=$event_id";
+			$request_count ++;
+			curl_setopt($curl, CURLOPT_URL, $url);
+			curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+			$summary = json_decode(curl_exec($curl), true);
+			// Get surface
+			$url = "https://api.b365api.com/v1/event/view?token=$token&event_id=$event_id";
+			$request_count ++;
+			curl_setopt($curl, CURLOPT_URL, $url);
+			curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+			$view = json_decode(curl_exec($curl), true);
+			if (array_key_exists("results", $view) && count($view["results"]) > 0 && $view["results"][0]["id"] == $event_id) {
+				$event = $view["results"][0];
 				if (array_key_exists("home", $event) && (array_key_exists("away", $event) || array_key_exists("o_away", $event))) {
 					$time_status = (int)$event["time_status"];
 					$player1_id = array_key_exists("o_home", $event) ? (int)$event["o_home"]["id"] : (int)$event["home"]["id"];
 					$player1_name = array_key_exists("o_home", $event) ? $event["o_home"]["name"] : $event["home"]["name"];
 					$player1_odd = NULL;
-
+	
 					$player2_id = array_key_exists("o_away", $event) ? (int)$event["o_away"]["id"] : (int)$event["away"]["id"];
 					$player2_name = array_key_exists("o_away", $event) ? $event["o_away"]["name"] : $event["away"]["name"];
 					$player2_odd = NULL;
-
+	
 					if ($summary) {
 						if ($time_status == 3) {
 							if (array_key_exists("results", $summary)
@@ -936,7 +854,7 @@ class Helper {
 									$player1_odd = $summary["results"]["Bet365"]["odds"]["kickoff"]["13_3"]["home_od"];
 								}
 							}
-
+	
 							if (array_key_exists("results", $summary)
 								&& array_key_exists("Bet365", $summary["results"])
 								&& array_key_exists("kickoff", $summary["results"]["Bet365"]["odds"])) {
@@ -960,7 +878,7 @@ class Helper {
 									$player1_odd = $summary["results"]["Bet365"]["odds"]["start"]["13_3"]["home_od"];
 								}
 							}
-
+	
 							if (array_key_exists("results", $summary)
 								&& array_key_exists("Bet365", $summary["results"])
 								&& array_key_exists("start", $summary["results"]["Bet365"]["odds"])) {
@@ -975,21 +893,20 @@ class Helper {
 						}
 					}
 					
-					$surface = $view && array_key_exists("results", $view)
-								&& array_key_exists("extra", $view["results"][0])
-								&& array_key_exists("ground", $view["results"][0]["extra"])
-									? $view["results"][0]["extra"]["ground"]
+					$surface = array_key_exists("extra", $event)
+								&& array_key_exists("ground", $event["extra"])
+									? $event["extra"]["ground"]
 									: NULL;
-
+	
 					$detail = "";
-					if ($view && array_key_exists("results", $view) && array_key_exists("events", $view["results"][0])) {
+					if (array_key_exists("events", $event)) {
 						$event_cnt = 0;
-						foreach ($view["results"][0]["events"] as $game) {
+						foreach ($event["events"] as $game) {
 							if (strpos($game["text"], "Game") !== false) {
 								$splitedText = explode(" - ", $game["text"]);
 								if (count($splitedText) > 2) {
-									$games = explode(" ", $splitedText[0]);
-
+									$games = explode(" ", trim($splitedText[0]));
+	
 									$event_cnt = (int)$games[1];
 									$detail .= $games[1];
 									if (strpos($game["text"], "hold") !== false) {
@@ -997,11 +914,11 @@ class Helper {
 									} elseif (strpos($game["text"], "breaks") !== false) {
 										$detail .= ":b:";
 									}
-
-									$name = $splitedText[1];
-									if ($name == $player1_name) {
+									
+									$name = str_replace(" ", "", $splitedText[1]);
+									if ($name == str_replace(" ", "", $player1_name)) {
 										$detail .= "1:";
-									} elseif ($name == $player2_name) {
+									} elseif ($name == str_replace(" ", "", $player2_name)) {
 										$detail .= "2:";
 									}
 									$words = explode(" ", $game["text"]);

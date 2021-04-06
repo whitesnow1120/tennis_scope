@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
 import { Link, Redirect } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import PropTypes from 'prop-types';
 
 import { GET_USER_STATUS } from '../store/actions/types';
 import BrowserButtonListener from './BrowserButtonListener';
@@ -13,6 +13,8 @@ const Header = (props) => {
   const dispatch = useDispatch();
   const { userLoggedIn } = useSelector((state) => state.tennis);
   const [browserButtonPressed, setBrowserButtonPressed] = useState(false);
+  const trigger1Status = localStorage.getItem('trigger1Clicked');
+  const [newTrigger1, setNewTrigger1] = useState(trigger1Status);
   const loggedIn = localStorage.getItem('isLoggedIn');
 
   useEffect(() => {
@@ -45,6 +47,10 @@ const Header = (props) => {
 
   const handleMenuItemClicked = (menu) => {
     setActiveMenu(menu);
+    if (menu === 4) {
+      setNewTrigger1('2');
+      localStorage.setItem('trigger1Clicked', '2');
+    }
   };
 
   const handleLogout = () => {
@@ -105,6 +111,7 @@ const Header = (props) => {
                 >
                   Trigger1
                 </Link>
+                {newTrigger1 === '1' && <div className="green-dot"></div>}
               </li>
             </ul>
             <div id="account">

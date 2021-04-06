@@ -3,25 +3,36 @@ import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
 
-import MatchItem from '../components/MatchItem';
+import { filterByRankOdd } from '../utils';
 import { getInplayData } from '../apis';
+import MatchItem from '../components/MatchItem';
 import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
+import RankButtonGroup from '../components/RankButtonGroup';
+import CustomSlider from '../components/CustomSlider/slider';
 
 const Inplay = () => {
   const [inplayData, setInplayData] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  const [activeFilter, setActiveFilter] = useState(1);
+  const defaultValues = [1, 2];
+  const domain = [1, 2];
+  const [values, setValues] = useState(defaultValues.slice());
   const override = css`
     display: block;
     margin: 0 auto;
     border-color: red;
   `;
 
+  const handleChange = (value) => {
+    setValues(value);
+  };
+
   useEffect(() => {
     const loadInplayData = async () => {
       const response = await getInplayData();
       if (response.status === 200) {
-        setInplayData(response.data);
+        const filteredData = filterByRankOdd(response.data, activeFilter, values);
+        setInplayData(filteredData);
       } else {
         setInplayData([]);
       }
@@ -32,7 +43,7 @@ const Inplay = () => {
     };
 
     loadInplayData();
-  }, []);
+  }, [activeFilter, values]);
 
   return (
     <>
@@ -51,6 +62,18 @@ const Inplay = () => {
       )}
       <section className="section inplay">
         <div className="container-fluid">
+          <div className="row header-filter-group">
+            <RankButtonGroup
+              setActiveFilter={setActiveFilter}
+              activeFilter={activeFilter}
+            />
+            <CustomSlider
+              handleChange={handleChange}
+              values={values}
+              domain={domain}
+              step={0.1}
+            />
+          </div>
           <div className="row mt-4">
             {inplayData.length > 0 ? (
               inplayData.map((item) => (
