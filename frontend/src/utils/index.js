@@ -367,31 +367,46 @@ export const filterByRankOdd = (data, type, range) => {
   const filteredData = [];
   data.map((item) => {
     let enabledRank = 0;
-    if (type === 1) {
+    if (type === '1') {
       // All
       enabledRank = 1;
-    } else if (type === 2) {
-      // Both Ranked
-      if (item['player1_ranking'] !== '-' && item['player2_ranking'] !== '-') {
-        enabledRank = 1;
-      }
-    } else if (type === 3) {
+    } else if (type === '2') {
       // One Ranked
       if (item['player1_ranking'] !== '-' || item['player2_ranking'] !== '-') {
         enabledRank = 1;
       }
-    } else if (type === 4) {
+    } else if (type === '3') {
       // Both Unranked
       if (item['player1_ranking'] === '-' && item['player2_ranking'] === '-') {
         enabledRank = 1;
       }
     }
     if (enabledRank) {
-      if (
-        (item['player1_odd'] >= range[0] && item['player1_odd'] <= range[1]) ||
-        (item['player2_odd'] >= range[0] && item['player2_odd'] <= range[1])
-      ) {
-        filteredData.push(item);
+      const range_1 = range[0] / 10;
+      const range_2 = range[1] / 10;
+      const player1_odd =
+        item['player1_odd'] !== null
+          ? parseFloat(item['player1_odd']).toFixed(2)
+          : null;
+      const player2_odd =
+        item['player2_odd'] !== null
+          ? parseFloat(item['player2_odd']).toFixed(2)
+          : null;
+      if (range_1 === 0.9) {
+        if (
+          ((player1_odd === null || player1_odd > 0) &&
+            player1_odd <= range_2) ||
+          ((player2_odd === null || player2_odd > 0) && player2_odd <= range_2)
+        ) {
+          filteredData.push(item);
+        }
+      } else {
+        if (
+          (player1_odd >= range_1 && player1_odd <= range_2) ||
+          (player2_odd >= range_1 && player2_odd <= range_2)
+        ) {
+          filteredData.push(item);
+        }
       }
     }
   });

@@ -2,7 +2,12 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 const RankButtonGroup = (props) => {
-  const { activeFilter, setActiveFilter } = props;
+  const { activeRank, setActiveRank } = props;
+
+  const handleChange = (filter) => {
+    localStorage.setItem('rankFilter', filter);
+    setActiveRank(filter);
+  };
 
   return (
     <div
@@ -13,46 +18,37 @@ const RankButtonGroup = (props) => {
       <button
         type="button"
         className={
-          activeFilter === 1 ? 'btn btn-secondary active' : 'btn btn-secondary'
+          activeRank === '1' ? 'btn btn-secondary active' : 'btn btn-secondary'
         }
-        onClick={() => setActiveFilter(1)}
+        onClick={() => handleChange('1')}
       >
         <span>All</span>
       </button>
       <button
         type="button"
         className={
-          activeFilter === 2 ? 'btn btn-secondary active' : 'btn btn-secondary'
+          activeRank === '2' ? 'btn btn-secondary active' : 'btn btn-secondary'
         }
-        onClick={() => setActiveFilter(2)}
+        onClick={() => handleChange('2')}
       >
-        Both Ranked
+        Ranked
       </button>
       <button
         type="button"
         className={
-          activeFilter === 3 ? 'btn btn-secondary active' : 'btn btn-secondary'
+          activeRank === '3' ? 'btn btn-secondary active' : 'btn btn-secondary'
         }
-        onClick={() => setActiveFilter(3)}
+        onClick={() => handleChange('3')}
       >
-        One Ranked
-      </button>
-      <button
-        type="button"
-        className={
-          activeFilter === 4 ? 'btn btn-secondary active' : 'btn btn-secondary'
-        }
-        onClick={() => setActiveFilter(4)}
-      >
-        Both Unranked
+        Unranked
       </button>
     </div>
   );
 };
 
 RankButtonGroup.propTypes = {
-  setActiveFilter: PropTypes.func,
-  activeFilter: PropTypes.number,
+  activeRank: PropTypes.string,
+  setActiveRank: PropTypes.func,
 };
 
 export default RankButtonGroup;

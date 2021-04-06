@@ -6,16 +6,30 @@ import BounceLoader from 'react-spinners/BounceLoader';
 import { filterByRankOdd } from '../utils';
 import { getInplayData } from '../apis';
 import MatchItem from '../components/MatchItem';
-import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
+import {
+  SITE_SEO_TITLE,
+  SITE_SEO_DESCRIPTION,
+  SLIDER_RANGE,
+  SLIDER_STEP,
+} from '../common/Constants';
 import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
 
 const Inplay = () => {
+  const rankFilter = localStorage.getItem('rankFilter');
+  const [activeRank, setActiveRank] = useState(
+    rankFilter === null ? '1' : rankFilter
+  );
   const [inplayData, setInplayData] = useState([]);
+  const [inplayFilteredData, setInplayFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState(1);
-  const defaultValues = [1, 2];
-  const domain = [1, 2];
+
+  const sliderChanged = JSON.parse(localStorage.getItem('sliderChanged'));
+  const [sliderValue, setSliderValue] = useState(
+    sliderChanged === null ? '0' : '1'
+  );
+  const defaultValues = sliderChanged === null ? SLIDER_RANGE : sliderChanged;
+  const domain = SLIDER_RANGE;
   const [values, setValues] = useState(defaultValues.slice());
   const override = css`
     display: block;
@@ -23,7 +37,13 @@ const Inplay = () => {
     border-color: red;
   `;
 
-  const handleChange = (value) => {
+  const handleSliderChange = (value) => {
+    setValues(value);
+    setSliderValue(sliderValue === '0' ? '1' : '0');
+    localStorage.setItem('sliderChanged', JSON.stringify(value));
+  };
+
+  const handleSliderUpdate = (value) => {
     setValues(value);
   };
 
@@ -31,8 +51,9 @@ const Inplay = () => {
     const loadInplayData = async () => {
       const response = await getInplayData();
       if (response.status === 200) {
-        const filteredData = filterByRankOdd(response.data, activeFilter, values);
-        setInplayData(filteredData);
+        setInplayData(response.data);
+        const filteredData = filterByRankOdd(response.data, activeRank, values);
+        setInplayFilteredData(filteredData);
       } else {
         setInplayData([]);
       }
@@ -43,7 +64,12 @@ const Inplay = () => {
     };
 
     loadInplayData();
-  }, [activeFilter, values]);
+  }, []);
+
+  useEffect(() => {
+    const filteredData = filterByRankOdd(inplayData, activeRank, values);
+    setInplayFilteredData(filteredData);
+  }, [activeRank, sliderValue]);
 
   return (
     <>
@@ -64,19 +90,20 @@ const Inplay = () => {
         <div className="container-fluid">
           <div className="row header-filter-group">
             <RankButtonGroup
-              setActiveFilter={setActiveFilter}
-              activeFilter={activeFilter}
+              activeRank={activeRank}
+              setActiveRank={setActiveRank}
             />
             <CustomSlider
-              handleChange={handleChange}
+              handleChange={handleSliderChange}
+              handleUpdate={handleSliderUpdate}
               values={values}
               domain={domain}
-              step={0.1}
+              step={SLIDER_STEP}
             />
           </div>
           <div className="row mt-4">
-            {inplayData.length > 0 ? (
-              inplayData.map((item) => (
+            {inplayFilteredData.length > 0 ? (
+              inplayFilteredData.map((item) => (
                 <MatchItem
                   key={item.id}
                   item={item}

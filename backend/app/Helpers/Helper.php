@@ -27,6 +27,28 @@ class Helper {
 	}
 
 	/**
+	 * Import all historical data
+	 * @param string $start_date
+	 */
+	public static function importHistoryData($start_date=NULL) {
+    	$start = microtime(true);
+    	if (!$start_date) {
+      		$start_date = "20190508";
+    	}
+    	$period = new DatePeriod(
+			new DateTime($start_date),
+			new DateInterval('P1D'),
+			date("Ymd")
+    	);
+    
+    	foreach ($period as $key => $value) {
+			Helper::updateDB($value->format("Ymd"), true);
+		}
+    	$execution_time = (microtime(true) - $start) / 60;
+    	echo "Total Execution Time:  " . $execution_time. "  Mins";
+  	}
+
+	/**
 	 * Make the correct detail including tie-break
 	 * @param 	string $detail
 	 * @return 	string $new_detail
@@ -238,28 +260,6 @@ class Helper {
     	}
 
     	return $times;
-  	}
-
-	/**
-	 * Import all historical data
-	 * @param string $start_date
-	 */
-  	public static function importHistoryData($start_date=NULL) {
-    	$start = microtime(true);
-    	if (!$start_date) {
-      		$start_date = "20180101";
-    	}
-    	$period = new DatePeriod(
-			new DateTime($start_date),
-			new DateInterval('P1D'),
-			date("Ymd")
-    	);
-    
-    	foreach ($period as $key => $value) {
-			Helper::updateDB($value->format("Ymd"), true);
-		}
-    	$execution_time = (microtime(true) - $start) / 60;
-    	echo "Total Execution Time:  " . $execution_time. "  Mins";
   	}
 	
 	/**
@@ -831,7 +831,7 @@ class Helper {
 			$view = json_decode(curl_exec($curl), true);
 			if (array_key_exists("results", $view) && count($view["results"]) > 0 && $view["results"][0]["id"] == $event_id) {
 				$event = $view["results"][0];
-				if (array_key_exists("home", $event) && (array_key_exists("away", $event) || array_key_exists("o_away", $event))) {
+				if ($event != NULL && array_key_exists("home", $event) && (array_key_exists("away", $event) || array_key_exists("o_away", $event))) {
 					$time_status = (int)$event["time_status"];
 					$player1_id = array_key_exists("o_home", $event) ? (int)$event["o_home"]["id"] : (int)$event["home"]["id"];
 					$player1_name = array_key_exists("o_home", $event) ? $event["o_home"]["name"] : $event["home"]["name"];

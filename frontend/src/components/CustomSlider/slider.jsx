@@ -20,6 +20,7 @@ const CustomSlider = (props) => {
         reversed={reversed}
         rootStyle={sliderStyle}
         onChange={handleChange}
+        onUpdate={handleChange}
         values={values}
       >
         <Rail>

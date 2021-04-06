@@ -23,7 +23,7 @@ const railCenterStyle = {
   borderRadius: 7,
   cursor: 'pointer',
   pointerEvents: 'none',
-  backgroundColor: 'rgb(155,155,155)',
+  backgroundColor: 'rgb(228 231 237)',
 };
 
 export class TooltipRail extends Component {
@@ -52,25 +52,10 @@ export class TooltipRail extends Component {
   };
 
   render() {
-    const { value, percent } = this.state;
-    const { activeHandleID, getRailProps } = this.props;
+    const { getRailProps } = this.props;
 
     return (
       <Fragment>
-        {!activeHandleID && value ? (
-          <div
-            style={{
-              left: `${percent}%`,
-              position: 'absolute',
-              marginLeft: '-11px',
-              marginTop: '-35px',
-            }}
-          >
-            <div className="tooltip">
-              <span className="tooltiptext">{value.toFixed(2)}</span>
-            </div>
-          </div>
-        ) : null}
         <div
           style={railStyle}
           {...getRailProps({
@@ -114,7 +99,8 @@ const railInnerStyle = {
   transform: 'translate(0%, -50%)',
   borderRadius: 7,
   pointerEvents: 'none',
-  backgroundColor: 'rgb(155,155,155)',
+  backgroundColor: 'rgb(228 231 237)',
+  border: '1px solid #d2d6e5',
 };
 
 export function SliderRail({ getRailProps }) {
@@ -150,28 +136,12 @@ export class Handle extends Component {
     const {
       domain: [min, max],
       handle: { id, value, percent },
-      isActive,
       disabled,
       getHandleProps,
     } = this.props;
-    const { mouseOver } = this.state;
 
     return (
       <Fragment>
-        {(mouseOver || isActive) && !disabled ? (
-          <div
-            style={{
-              left: `${percent}%`,
-              position: 'absolute',
-              marginLeft: '-11px',
-              marginTop: '-35px',
-            }}
-          >
-            <div className="tooltip">
-              <span className="tooltiptext">{value.toFixed(2)}</span>
-            </div>
-          </div>
-        ) : null}
         <div
           style={{
             left: `${percent}%`,
@@ -206,7 +176,7 @@ export class Handle extends Component {
             border: 0,
             borderRadius: '50%',
             boxShadow: '1px 1px 1px 1px rgba(0, 0, 0, 0.2)',
-            backgroundColor: disabled ? '#666' : '#8b6068',
+            backgroundColor: disabled ? '#fff' : '#fff',
           }}
         />
       </Fragment>
@@ -241,7 +211,7 @@ export function Track({ source, target, getTrackProps, disabled }) {
         transform: 'translate(0%, -50%)',
         height: 14,
         zIndex: 1,
-        backgroundColor: disabled ? '#999' : '#8b6068',
+        backgroundColor: disabled ? '#53ab0f' : '#53ab0f',
         borderRadius: 7,
         cursor: 'pointer',
         left: `${source.percent}%`,
@@ -275,6 +245,10 @@ Track.defaultProps = {
 // TICK COMPONENT
 // *******************************************************
 export function Tick({ tick, count, format }) {
+  let value = format(tick.value) / 10;
+  if (value === 1 || value === 2) {
+    value += '.0';
+  }
   return (
     <div>
       <div
@@ -298,7 +272,7 @@ export function Tick({ tick, count, format }) {
           left: `${tick.percent}%`,
         }}
       >
-        {format(tick.value)}
+        {value === 0.9 ? '-' : value}
       </div>
     </div>
   );

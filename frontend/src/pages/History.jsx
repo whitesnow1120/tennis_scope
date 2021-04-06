@@ -6,7 +6,12 @@ import BounceLoader from 'react-spinners/BounceLoader';
 
 import { filterByRankOdd } from '../utils';
 import { getHistoryData } from '../apis';
-import { SITE_SEO_TITLE, SITE_SEO_DESCRIPTION } from '../common/Constants';
+import {
+  SITE_SEO_TITLE,
+  SITE_SEO_DESCRIPTION,
+  SLIDER_RANGE,
+  SLIDER_STEP,
+} from '../common/Constants';
 import CustomDatePicker from '../components/CustomDatePicker';
 import MatchItem from '../components/MatchItem';
 import RankButtonGroup from '../components/RankButtonGroup';
@@ -14,11 +19,20 @@ import CustomSlider from '../components/CustomSlider/slider';
 
 const History = () => {
   const { historyDate } = useSelector((state) => state.tennis);
+  const rankFilter = localStorage.getItem('rankFilter');
+  const [activeRank, setActiveRank] = useState(
+    rankFilter === null ? '1' : rankFilter
+  );
   const [historyData, setHistoryData] = useState([]);
+  const [historyFilteredData, setHistoryFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState(1);
-  const defaultValues = [1, 2];
-  const domain = [1, 2];
+
+  const sliderChanged = JSON.parse(localStorage.getItem('sliderChanged'));
+  const [sliderValue, setSliderValue] = useState(
+    sliderChanged === null ? '0' : '1'
+  );
+  const defaultValues = sliderChanged === null ? SLIDER_RANGE : sliderChanged;
+  const domain = SLIDER_RANGE;
   const [values, setValues] = useState(defaultValues.slice());
   const override = css`
     display: block;
@@ -26,7 +40,13 @@ const History = () => {
     border-color: red;
   `;
 
-  const handleChange = (value) => {
+  const handleSliderChange = (value) => {
+    setValues(value);
+    setSliderValue(sliderValue === '0' ? '1' : '0');
+    localStorage.setItem('sliderChanged', JSON.stringify(value));
+  };
+
+  const handleSliderUpdate = (value) => {
     setValues(value);
   };
 
@@ -34,12 +54,9 @@ const History = () => {
     const loadHistoryData = async () => {
       const response = await getHistoryData(historyDate);
       if (response.status === 200) {
-        const filteredData = filterByRankOdd(
-          response.data,
-          activeFilter,
-          values
-        );
-        setHistoryData(filteredData);
+        setHistoryData(response.data);
+        const filteredData = filterByRankOdd(response.data, activeRank, values);
+        setHistoryFilteredData(filteredData);
       } else {
         setHistoryData([]);
       }
@@ -50,7 +67,12 @@ const History = () => {
     };
 
     loadHistoryData();
-  }, [historyDate, activeFilter, values]);
+  }, [historyDate]);
+
+  useEffect(() => {
+    const filteredData = filterByRankOdd(historyData, activeRank, values);
+    setHistoryFilteredData(filteredData);
+  }, [activeRank, sliderValue]);
 
   return (
     <>
@@ -74,19 +96,20 @@ const History = () => {
               <CustomDatePicker />
             </div>
             <RankButtonGroup
-              setActiveFilter={setActiveFilter}
-              activeFilter={activeFilter}
+              activeRank={activeRank}
+              setActiveRank={setActiveRank}
             />
             <CustomSlider
-              handleChange={handleChange}
+              handleChange={handleSliderChange}
+              handleUpdate={handleSliderUpdate}
               values={values}
               domain={domain}
-              step={0.1}
+              step={SLIDER_STEP}
             />
           </div>
           <div className="row mt-4">
-            {historyData.length > 0 ? (
-              historyData.map((item) => (
+            {historyFilteredData.length > 0 ? (
+              historyFilteredData.map((item) => (
                 <MatchItem
                   key={item.id}
                   item={item}
