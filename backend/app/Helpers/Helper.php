@@ -33,7 +33,7 @@ class Helper {
 	public static function importHistoryData($start_date=NULL) {
     	$start = microtime(true);
     	if (!$start_date) {
-      		$start_date = "20191120";
+      		$start_date = "20160901";
     	}
     	$period = new DatePeriod(
 			new DateTime($start_date),
@@ -72,6 +72,127 @@ class Helper {
 			$i ++;
 		}
 		return $new_details;
+	}
+
+	/**
+	 * Get opponent sub detail (oo_ranking for RAW, RAL)
+	 * @param int $o_id
+	 */
+	public static function getOpponentSubDetail($o_id, $history_tables, $players, $opponent_table) {
+		$matches_array = array();
+        foreach ($history_tables as $table) {
+            // filtering by player ids (player1)
+            $match_table_subquery = DB::table($table->tablename)
+										->where('time_status', 3)
+                                        ->where(function($query) use ($o_id) {
+                                            $query->where('player1_id', $o_id)
+                                            ->orWhere('player2_id', $o_id);
+                                        });
+            
+            array_push($matches_array, $match_table_subquery->get());
+        }
+		$matches = Helper::getMatchesResponse($matches_array, $players);
+		$event_ids = array();
+		foreach ($matches as $match) {
+			if (!in_array($match["event_id"], $event_ids) && $match["scores"] != "") {
+				array_push($event_ids, $match["event_id"]);
+				$set_scores = explode(",", $match["scores"]);
+				$set_count = count($set_scores);
+				$empty_array = array_fill(0, 5-count($set_scores), "0-0");
+				$set_scores = array_merge($set_scores, $empty_array);
+
+				if ($set_count > 0) {
+					$score = explode("-", $set_scores[0]);
+					if (count($score) == 2) {
+						$score_1 = (int)$score[0];
+						$score_2 = (int)$score[1];
+						if ($match["player1_id"] == $o_id) {
+							$home = 1;
+							$oo_id = $match["player2_id"];
+							$o_ranking = $match["player1_ranking"] == "-" ? 501 : $match["player1_ranking"];
+							$oo_ranking = $match["player2_ranking"] == "-" ? 501 : $match["player2_ranking"];
+							if ($score_1 > $score_2) {
+								$won = 1;
+							} else {
+								$won = 2;
+							}
+						} else {
+							$home = 2;
+							$oo_id = $match["player1_id"];
+							$o_ranking = $match["player2_ranking"] == "-" ? 501 : $match["player2_ranking"];
+							$oo_ranking = $match["player1_ranking"] == "-" ? 501 : $match["player1_ranking"];
+							if ($score_1 > $score_2) {
+								$won = 2;
+							} else {
+								$won = 1;
+							}
+						}
+
+						$depths = [0,0,0,0,0];
+						if ($match["detail"] != "") {
+							$j = 0;
+							$score_count = array();
+							$score_count[$j] = 0;
+							$details = Helper::getCorrectDetail($match["detail"]);
+							$total_details_count = count($details);
+							
+							foreach ($set_scores as $set_score) {
+								$m = 0; // won count index
+								$won_counts = array();
+								$won_counts[$m] = 0;
+
+								$score_count[$j] = array_key_exists($j, $score_count) ? $score_count[$j] : 0;
+								$scores = explode("-", $set_score);
+								$score_0 = array_key_exists(0, $scores) ? (int)$scores[0] : 0;
+								$score_1 = array_key_exists(1, $scores) ? (int)$scores[1] : 0;
+
+								if (!($score_0 == 0 && $score_1 == 0)) {
+									$score_count[$j + 1] = $score_count[$j] + $score_0 + $score_1;
+									for ($k = $score_count[$j]; $k < $score_count[$j + 1]; $k ++) {
+										if ($k < $total_details_count) {
+											$set_details = explode(":", $details[$k]);
+											if (count($set_details) == 4 && ($set_details[1] == "b" || $set_details[1] == "h")) {
+												$game = Helper::getGamesPoint($set_details[3]);
+												if ($game != -1) {
+													if ((int)$set_details[2] == $home) {
+														// add won counts of the set
+														$won_counts[$m] ++;
+													} else {
+														// add index of won counts array
+														$m ++;
+														$won_counts[$m] = 0;
+													}
+												}
+											}
+										}
+									}
+									$depths[$j] = max($won_counts);
+								}
+								$j ++;
+							}
+						}
+			
+						$db_data = [
+							"event_id"  	=> $match["event_id"],
+							"o_id"    		=> $o_id,
+							"o_ranking"		=> $o_ranking,
+							"oo_id"    		=> $oo_id,
+							"oo_ranking"	=> $oo_ranking,
+							"surface"		=> $match["surface"],
+							"sets"			=> $set_count,
+							"time"			=> $match["time"],
+							"won"			=> $won,
+							"depths"		=> json_encode($depths),
+						];
+						DB::table($opponent_table)
+							->updateOrInsert(
+								["event_id" => $match["event_id"]],
+								$db_data
+						);
+					}
+				}
+			}
+		}
 	}
 
 	/**
@@ -350,7 +471,7 @@ class Helper {
     }
 
 	/**
-	 * Pre calculation for Upcoming & Inplay
+	 * Pre calculation for Upcoming
 	 */
 	public static function preCalculation() {
 		$start_time = microtime(true);
@@ -367,8 +488,11 @@ class Helper {
 
 		$match_table_name = "t_matches_" . substr($date, 0, 4) . "_" . substr($date, 4, 2);
 		if (Schema::hasTable($match_table_name)) {
+			$d = substr($date, 0, 4) . "-" . substr($date, 4, 2) . "-" . substr($date, 6, 2);
+			$times = Helper::getTimePeriod($d);
 			$upcomingInplayData = DB::table($match_table_name)
 									->whereIn("time_status", [0, 1])
+									->whereBetween('time', [$times[0], $times[1]])
 									->get();
 			$player_ids = array();
 			$enable_names = array();
@@ -381,6 +505,8 @@ class Helper {
 					$i ++;
 				}
 				array_push($enable_names, $enable_name);
+				$enable_opponent_table_name = "t_bucket_opponents_" . $data->player1_id . "_" . $data->player2_id;
+				array_push($enable_names, $enable_opponent_table_name);
 			}
 			// drop the old pre-calculated tables
 			$old_bucket_tables = array_diff($bucket_table_names, $enable_names);
@@ -400,6 +526,7 @@ class Helper {
 				$player1_id = $ids["player1_id"];
 				$player2_id = $ids["player2_id"];
 				$bucket_players_table = "t_bucket_players_" . $player1_id . "_" . $player2_id;
+				$table_exist = true;
 				if (!Schema::hasTable($bucket_players_table)) {
 					Schema::create($bucket_players_table, function($table) {
 						$table->increments("id");
@@ -426,9 +553,29 @@ class Helper {
 						$table->text("detail")->nullable();
 						$table->string("home", 1);
 					});
+					$table_exist = false;
 				}
 
-				Helper::preCalculate($bucket_players_table, $player1_id, $player2_id, $history_tables, $players);
+				$bucket_opponents_table = "t_bucket_opponents_" . $player1_id . "_" . $player2_id;
+				if (!Schema::hasTable($bucket_opponents_table)) {
+					Schema::create($bucket_opponents_table, function($table) {
+						$table->increments("id");
+						$table->integer("event_id");
+						$table->integer("o_id");
+						$table->integer("o_ranking")->nullable();
+						$table->integer("oo_id");
+						$table->integer("oo_ranking")->nullable();
+						$table->integer("won"); // 1: o, 2: oo
+						$table->integer("sets")->nullable();
+						$table->json("depths");
+						$table->string("surface", 50)->nullable();
+						$table->integer("time");
+					});
+				}
+
+				if (!$table_exist) {
+					Helper::preCalculate($bucket_players_table, $bucket_opponents_table, $player1_id, $player2_id, $history_tables, $players);
+				}
 			}
 		}
 
@@ -446,7 +593,7 @@ class Helper {
 	 * @param array $history_tables
 	 * @param array $players
 	 */
-	public static function preCalculate($bucket_players_table, $player1_id, $player2_id, $history_tables, $players) {
+	public static function preCalculate($bucket_players_table, $bucket_opponents_table, $player1_id, $player2_id, $history_tables, $players) {
 		$matches1_array = array();
         $matches2_array = array();
         foreach ($history_tables as $table) {
@@ -477,6 +624,8 @@ class Helper {
 		// add breaks to the players array
         $matches_1 = array();
         $matches_2 = array();
+
+		$o_ids = array();
 
         foreach ($matches1_set as $data) {
 			if ($data["scores"] != "") {
@@ -546,7 +695,12 @@ class Helper {
 					->updateOrInsert(
 						["event_id" => $data["event_id"]],
 						$db_data
-					);
+				);
+				// opponent detail
+				if (!in_array($opponent_info["o_id"], $o_ids)) {
+					Helper::getOpponentSubDetail($opponent_info["o_id"], $history_tables, $players, $bucket_opponents_table);
+					array_push($o_ids, $data["event_id"]);
+				}
 			}
 		}
 
@@ -619,9 +773,63 @@ class Helper {
 					->updateOrInsert(
 						["event_id" => $data["event_id"]],
 						$db_data
-					);
+				);
+				// opponent detail
+				if (!in_array($opponent_info["o_id"], $o_ids)) {
+					Helper::getOpponentSubDetail($opponent_info["o_id"], $history_tables, $players, $bucket_opponents_table);
+					array_push($o_ids, $data["event_id"]);
+				}
 			}
         }
+	}
+
+	/**
+	 * Update Inplay Table every 5 secs
+	 */
+	public static function updateInplayTable() {
+		$curl = curl_init();
+		$token = env("API_TOKEN", "");
+		$inplay_table = "t_inplay";
+		$url = "https://api.b365api.com/v2/events/inplay?sport_id=13&token=$token";
+		curl_setopt($curl, CURLOPT_URL, $url);
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+		$inplay_data = json_decode(curl_exec($curl), true);
+		
+		$previous_events = DB::table($inplay_table)
+							->select('event_id')
+							->get();
+		$old_event_ids = array();
+		foreach ($previous_events as $event) {
+			array_push($old_event_ids, $event->event_id);
+		}
+							
+		if (array_key_exists("results", $inplay_data)) {
+			$events = $inplay_data["results"];
+			if (count($events) > 0) {
+				foreach ($events as $event) {
+					if ($event["points"] != NULL && $event["ss"] != NULL) {
+						$inplay_array = [
+							"event_id"  => (int)$event["id"],
+							"ss"   		=> trim($event["ss"]),
+							"points"   	=> $event["points"],
+							"indicator"	=> $event["playing_indicator"],
+						];
+						// Update or Insert into t_inplay table
+						DB::table($inplay_table)
+							->updateOrInsert(
+								["event_id" => (int)$event["id"]],
+								$inplay_array
+							);
+					}
+					if (($key = array_search((int)$event["id"], $old_event_ids)) !== false) {
+						unset($old_event_ids[$key]);
+					}
+				}
+				DB::table($inplay_table)
+					->whereIn('event_id', $old_event_ids)
+					->delete();
+			}
+		}
 	}
 
 	/**
@@ -639,7 +847,7 @@ class Helper {
 		if ($date > date("Ymd")) {
 			return;
 		}
-		
+		$inplay_table = "t_inplay";
 		$log = substr($date, 0, 4) . "-" . substr($date, 4, 2) . "-" . substr($date, 6, 2) . ":  Start Time: " . date("Y-m-d H:i:s");
     	// Check Y-m table is exist or not
     	$match_table_name = "t_matches_" . substr($date, 0, 4) . "_" . substr($date, 4, 2);
@@ -951,7 +1159,22 @@ class Helper {
 						->updateOrInsert(
 							["event_id" => (int)$event_id],
 							$update_or_insert_array
-						);
+					);
+					echo $time_status . "\n";
+					if (!$once && $time_status == 1) {
+						echo "here\n";
+						$inplay_array = [
+							"event_id"  => (int)$event_id,
+							"ss"   		=> $event["ss"] ? trim($event["ss"]) : "",
+							"points"   	=> $event["points"],
+						];
+						// Update or Insert into t_inplay table
+						DB::table($inplay_table)
+							->updateOrInsert(
+								["event_id" => (int)$event_id],
+								$inplay_array
+							);
+					}
 				}
 			}
 		}

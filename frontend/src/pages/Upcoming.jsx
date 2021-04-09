@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
+import PropTypes from 'prop-types';
 
 import { filterByRankOdd } from '../utils';
 import { getUpcomingData } from '../apis';
@@ -15,7 +16,8 @@ import {
 import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
 
-const Upcoming = () => {
+const Upcoming = (props) => {
+  const { filterChanged, setFilterChanged } = props;
   const [upcomingData, setUpcomingData] = useState([]);
   const [upcomingFilteredData, setUpcomingFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,6 +69,7 @@ const Upcoming = () => {
   }, []);
 
   useEffect(() => {
+    setFilterChanged(!filterChanged);
     const filteredData = filterByRankOdd(upcomingData, activeRank, values);
     setUpcomingFilteredData(filteredData);
   }, [activeRank, sliderValue]);
@@ -120,6 +123,11 @@ const Upcoming = () => {
       </section>
     </>
   );
+};
+
+Upcoming.propTypes = {
+  filterChanged: PropTypes.bool,
+  setFilterChanged: PropTypes.func,
 };
 
 export default Upcoming;

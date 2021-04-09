@@ -33,11 +33,11 @@ const AverageRanks = (props) => {
   return (
     <div className="average-ranks">
       <div className="average-raw">
-        <span>RAW:</span>
+        <span>RW:</span>
         <span>{raw}</span>
       </div>
       <div className="average-ral">
-        <span>RAL:</span>
+        <span>RL:</span>
         <span>{ral}</span>
       </div>
     </div>

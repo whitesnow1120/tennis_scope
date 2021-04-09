@@ -63,6 +63,9 @@ export const sortByTime = (data, player1_id, player2_id) => {
   data[player2_id].sort(function (a, b) {
     return b['time'] - a['time'];
   }); // Sort biggest first
+  data['opponents'].sort(function (a, b) {
+    return b['time'] - a['time'];
+  }); // Sort biggest first
 };
 
 export const filterData = (player1_id, player2_id, relationData, filters) => {
@@ -77,6 +80,25 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     );
     filteredData[player2_id] = filteredData[player2_id].filter(
       (item) => item['surface'] === filters['surface']
+    );
+    filteredData['opponents'] = filteredData['opponents'].filter(
+      (item) => item['surface'] === filters['surface']
+    );
+  }
+
+  // filtering by sets
+  if (filterSet1 !== 'ALL') {
+    filteredData[player1_id] = filteredData[player1_id].filter(
+      (item) =>
+        item['scores'] !== '' &&
+        item['scores'].split(',').length >= parseInt(filterSet1)
+    );
+  }
+  if (filterSet2 !== 'ALL') {
+    filteredData[player2_id] = filteredData[player2_id].filter(
+      (item) =>
+        item['scores'] !== '' &&
+        item['scores'].split(',').length >= parseInt(filterSet2)
     );
   }
 
@@ -144,22 +166,6 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     }); // Sort youngest first
   }
 
-  // filtering by sets
-  if (filterSet1 !== 'ALL') {
-    filteredData[player1_id] = filteredData[player1_id].filter(
-      (item) =>
-        item['scores'] != '' &&
-        item['scores'].split(',').length >= parseInt(filterSet1)
-    );
-  }
-  if (filterSet2 !== 'ALL') {
-    filteredData[player2_id] = filteredData[player2_id].filter(
-      (item) =>
-        item['scores'] != '' &&
-        item['scores'].split(',').length >= parseInt(filterSet2)
-    );
-  }
-
   // filtering by HIR, LOR
   let filterRankingPlayer1 = [];
   let filterRankingPlayer2 = [];
@@ -198,7 +204,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   let totalPlayerBRW = 0;
   let totalPlayerBRL = 0;
   let totalPlayerGAH = 0;
-  let totalPlayerGRA = [];
+  let totalPlayerGIR = [];
   let ww = 0;
   let wl = 0;
   let lw = 0;
@@ -223,7 +229,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         sumBRL += pBRL[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
         sumGAH += pGAH[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
         if (pDepth[j] !== 0) {
-          totalPlayerGRA.push(pDepth[j]);
+          totalPlayerGIR.push(pDepth[j]);
         }
       }
     } else {
@@ -241,7 +247,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
       );
       let depth = pDepth[parseInt(filterSet1) - 1];
       if (depth !== 0) {
-        totalPlayerGRA.push(depth);
+        totalPlayerGIR.push(depth);
       }
     }
     totalPlayerBRW += sumBRW;
@@ -282,10 +288,10 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     }
   }
 
-  let sumGRA = totalPlayerGRA.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+  let sumGRA = totalPlayerGIR.reduce((a, b) => parseInt(a) + parseInt(b), 0);
   let pGRA =
-    totalPlayerGRA.length > 0
-      ? (sumGRA / totalPlayerGRA.length).toFixed(2)
+    totalPlayerGIR.length > 0
+      ? (sumGRA / totalPlayerGIR.length).toFixed(2)
       : '0';
   filteredData['performance'][player1_id] = {
     pBRW: totalPlayerBRW,
@@ -304,7 +310,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   totalPlayerBRW = 0;
   totalPlayerBRL = 0;
   totalPlayerGAH = 0;
-  totalPlayerGRA = [];
+  totalPlayerGIR = [];
   ww = 0;
   wl = 0;
   lw = 0;
@@ -327,7 +333,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
         sumBRL += pBRL[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
         sumGAH += pGAH[j].reduce((a, b) => parseInt(a) + parseInt(b), 0);
         if (pDepth[j] !== 0) {
-          totalPlayerGRA.push(pDepth[j]);
+          totalPlayerGIR.push(pDepth[j]);
         }
       }
     } else {
@@ -345,7 +351,7 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
       );
       const depth = pDepth[parseInt(filterSet2) - 1];
       if (depth !== 0) {
-        totalPlayerGRA.push(depth);
+        totalPlayerGIR.push(depth);
       }
     }
     totalPlayerBRW += sumBRW;
@@ -386,10 +392,10 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     }
   }
 
-  sumGRA = totalPlayerGRA.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+  sumGRA = totalPlayerGIR.reduce((a, b) => parseInt(a) + parseInt(b), 0);
   pGRA =
-    totalPlayerGRA.length > 0
-      ? (sumGRA / totalPlayerGRA.length).toFixed(2)
+    totalPlayerGIR.length > 0
+      ? (sumGRA / totalPlayerGIR.length).toFixed(2)
       : '0';
   filteredData['performance'][player2_id] = {
     pBRW: totalPlayerBRW,
@@ -403,59 +409,379 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     RAW: raw,
     RAL: ral,
   };
-  return filteredData;
+
+  // get RW, RL, GIR for opponents
+  let filteredPlayer1 = [];
+  filteredData[player1_id].map((p) => {
+    let opponents = filteredData['opponents'].filter(
+      (o) => o['o_id'] === p['o_id']
+    );
+    // filter by set
+    if (filterSet1 !== 'ALL') {
+      opponents = opponents.filter((o) => o['sets'] >= parseInt(filterSet1));
+    }
+
+    // filter by HIR, LOR
+    if (filters['rankDiff1'] === 'HIR') {
+      opponents = opponents.filter(
+        (o) => o['oo_ranking'] != 501 && o['oo_ranking'] < o['o_ranking']
+      );
+    } else if (filters['rankDiff1'] === 'LOR') {
+      opponents = opponents.filter(
+        (o) => o['oo_ranking'] === 501 || o['oo_ranking'] > o['o_ranking']
+      );
+    }
+
+    let limitOpponentCnt = 0;
+    let totalOpponentGIR = [];
+    let oRW = [];
+    let oRL = [];
+    for (let i = 0; i < opponents.length; i++) {
+      const oDepth = JSON.parse(opponents[i]['depths']);
+      if (filterSet1 === 'ALL') {
+        for (let j = 0; j < 5; j++) {
+          if (oDepth[j] !== 0) {
+            totalOpponentGIR.push(oDepth[j]);
+          }
+        }
+      } else {
+        const depth = oDepth[parseInt(filterSet1) - 1];
+        if (depth !== 0) {
+          totalOpponentGIR.push(depth);
+        }
+      }
+
+      if (opponents[i]['won'] === 1) {
+        oRW.push(opponents[i]['oo_ranking']);
+      } else {
+        oRL.push(opponents[i]['oo_ranking']);
+      }
+      limitOpponentCnt++;
+      if (limitOpponentCnt === filterLimit) {
+        break;
+      }
+    }
+    const sumOGIR = totalOpponentGIR.reduce(
+      (a, b) => parseInt(a) + parseInt(b),
+      0
+    );
+    const oGIR =
+      totalOpponentGIR.length > 0
+        ? (sumOGIR / totalOpponentGIR.length).toFixed(2)
+        : '0';
+    p['oGIR'] = oGIR;
+    if (oRW.length === 0) {
+      p['oRW'] = 0;
+    } else {
+      const sumORW = oRW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+      p['oRW'] = sumORW / oRW.length;
+    }
+    if (oRL.length === 0) {
+      p['oRL'] = 0;
+    } else {
+      const sumORL = oRL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+      p['oRL'] = sumORL / oRL.length;
+    }
+    filteredPlayer1.push(p);
+  });
+
+  // opponent 2
+  let filteredPlayer2 = [];
+  filteredData[player2_id].map((p) => {
+    let opponents = filteredData['opponents'].filter(
+      (o) => o['o_id'] === p['o_id']
+    );
+    // filter by set
+    if (filterSet2 !== 'ALL') {
+      opponents = opponents.filter((o) => o['sets'] >= parseInt(filterSet2));
+    }
+
+    // filter by HIR, LOR
+    if (filters['rankDiff2'] === 'HIR') {
+      opponents = opponents.filter(
+        (o) => o['oo_ranking'] != 501 && o['oo_ranking'] < o['o_ranking']
+      );
+    } else if (filters['rankDiff2'] === 'LOR') {
+      opponents = opponents.filter(
+        (o) => o['oo_ranking'] === 501 || o['oo_ranking'] > o['o_ranking']
+      );
+    }
+
+    let limitOpponentCnt = 0;
+    let totalOpponentGIR = [];
+    let oRW = [];
+    let oRL = [];
+    for (let i = 0; i < opponents.length; i++) {
+      const oDepth = JSON.parse(opponents[i]['depths']);
+      if (filterSet2 === 'ALL') {
+        for (let j = 0; j < 5; j++) {
+          if (oDepth[j] !== 0) {
+            totalOpponentGIR.push(oDepth[j]);
+          }
+        }
+      } else {
+        const depth = oDepth[parseInt(filterSet2) - 1];
+        if (depth !== 0) {
+          totalOpponentGIR.push(depth);
+        }
+      }
+
+      if (opponents[i]['won'] === 1) {
+        oRW.push(opponents[i]['oo_ranking']);
+      } else {
+        oRL.push(opponents[i]['oo_ranking']);
+      }
+      limitOpponentCnt++;
+      if (limitOpponentCnt === filterLimit) {
+        break;
+      }
+    }
+    const sumOGIR = totalOpponentGIR.reduce(
+      (a, b) => parseInt(a) + parseInt(b),
+      0
+    );
+    const oGIR =
+      totalOpponentGIR.length > 0
+        ? (sumOGIR / totalOpponentGIR.length).toFixed(2)
+        : '0';
+    p['oGIR'] = oGIR;
+    if (oRW.length === 0) {
+      p['oRW'] = 0;
+    } else {
+      const sumORW = oRW.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+      p['oRW'] = sumORW / oRW.length;
+    }
+    if (oRL.length === 0) {
+      p['oRL'] = 0;
+    } else {
+      const sumORL = oRL.reduce((a, b) => parseInt(a) + parseInt(b), 0);
+      p['oRL'] = sumORL / oRL.length;
+    }
+    filteredPlayer2.push(p);
+  });
+  let playersData = {};
+  playersData[player1_id] = filteredPlayer1;
+  playersData[player2_id] = filteredPlayer2;
+  playersData['performance'] = filteredData['performance'];
+  return playersData;
 };
 
 /**
  * Filter by rank (button group)
  * @param {array} data
  */
-export const filterByRankOdd = (data, type, range) => {
-  const filteredData = [];
-  data.map((item) => {
-    let enabledRank = 0;
-    if (type === '1') {
-      // All
-      enabledRank = 1;
-    } else if (type === '2') {
-      // One Ranked
-      if (item['player1_ranking'] !== '-' || item['player2_ranking'] !== '-') {
+export const filterByRankOdd = (data, type, range, match_type = 0) => {
+  if (data !== undefined) {
+    const filteredData = [];
+    let matchData = [...data];
+    matchData.map((item) => {
+      let enabledRank = 0;
+      if (type === '1') {
+        // All
         enabledRank = 1;
-      }
-    } else if (type === '3') {
-      // Both Unranked
-      if (item['player1_ranking'] === '-' && item['player2_ranking'] === '-') {
-        enabledRank = 1;
-      }
-    }
-    if (enabledRank) {
-      const range_1 = range[0] / 10;
-      const range_2 = range[1] / 10;
-      const player1_odd =
-        item['player1_odd'] !== null
-          ? parseFloat(item['player1_odd']).toFixed(2)
-          : null;
-      const player2_odd =
-        item['player2_odd'] !== null
-          ? parseFloat(item['player2_odd']).toFixed(2)
-          : null;
-      if (range_1 === 0.9) {
+      } else if (type === '2') {
+        // One Ranked
         if (
-          ((player1_odd === null || player1_odd > 0) &&
-            player1_odd <= range_2) ||
-          ((player2_odd === null || player2_odd > 0) && player2_odd <= range_2)
+          item['player1_ranking'] !== '-' ||
+          item['player2_ranking'] !== '-'
         ) {
-          filteredData.push(item);
+          enabledRank = 1;
         }
-      } else {
+      } else if (type === '3') {
+        // Both Unranked
         if (
-          (player1_odd >= range_1 && player1_odd <= range_2) ||
-          (player2_odd >= range_1 && player2_odd <= range_2)
+          item['player1_ranking'] === '-' &&
+          item['player2_ranking'] === '-'
         ) {
-          filteredData.push(item);
+          enabledRank = 1;
+        }
+      }
+      if (enabledRank) {
+        // get the current score
+        const range_1 = range[0] / 10;
+        const range_2 = range[1] / 10;
+        const player1_odd =
+          item['player1_odd'] !== null
+            ? parseFloat(item['player1_odd']).toFixed(2)
+            : null;
+        const player2_odd =
+          item['player2_odd'] !== null
+            ? parseFloat(item['player2_odd']).toFixed(2)
+            : null;
+        if (range_1 === 0.9) {
+          if (
+            ((player1_odd === null || player1_odd > 0) &&
+              player1_odd <= range_2) ||
+            ((player2_odd === null || player2_odd > 0) &&
+              player2_odd <= range_2)
+          ) {
+            if (match_type === 1) {
+              item['ss'] = '';
+              item['points'] = '';
+              item['indicator'] = '';
+              filteredData.push(item);
+            } else {
+              filteredData.push(item);
+            }
+          }
+        } else {
+          if (
+            (player1_odd >= range_1 && player1_odd <= range_2) ||
+            (player2_odd >= range_1 && player2_odd <= range_2)
+          ) {
+            if (match_type === 1) {
+              item['ss'] = '';
+              item['points'] = '';
+              item['indicator'] = '';
+              filteredData.push(item);
+            } else {
+              filteredData.push(item);
+            }
+          }
+        }
+      }
+    });
+    return filteredData;
+  }
+  return [];
+};
+
+export const addInplayScores = (inplayData, scores) => {
+  let filteredData = [];
+  inplayData.map((item) => {
+    scores.map((score) => {
+      if (item['event_id'] === score['event_id']) {
+        let data = { ...item };
+        data['ss'] = score['ss'];
+        data['points'] = score['points'];
+        data['indicator'] = score['indicator'];
+        filteredData.push(data);
+      }
+    });
+  });
+  return filteredData;
+};
+
+export const getCurrentInplayScores = (event_id, data) => {
+  const currentEvent = data.filter((item) => item['event_id'] === event_id);
+  return currentEvent[0];
+};
+
+// trigger1
+export const filterTrigger1 = (
+  triggerData,
+  trigger1DataBySet,
+  gameDiff = 1
+) => {
+  let filteredData1 = [...trigger1DataBySet['set1']]; // set 1
+  let filteredData2 = [...trigger1DataBySet['set2']]; // set 2
+  let filteredData3 = [...trigger1DataBySet['set3']]; // set 3
+
+  // remove old items
+  filteredData1 = filteredData1.filter((f) => f['ss'].split(',').length === 1);
+  filteredData2 = filteredData2.filter((f) => f['ss'].split(',').length === 2);
+  filteredData3 = filteredData3.filter((f) => f['ss'].split(',').length === 3);
+
+  triggerData['inplay_detail'].map((item) => {
+    // check who is w
+    const setScores = item['ss'].split(',');
+    let score = [];
+    const setLength = setScores.length;
+    if (setLength >= 1) {
+      score = setScores[setLength - 1].split('-');
+    }
+    if (score.length === 2) {
+      const home = parseInt(score[0]);
+      const away = parseInt(score[1]);
+      let winner = -1;
+      if (home - away === gameDiff) {
+        winner = 1;
+      } else if (away - home === gameDiff) {
+        winner = 2;
+      }
+
+      if (winner !== -1) {
+        // get GIR of player1
+        let player1GIR = [];
+        triggerData['players_detail'][item['player1_id']].map((p) => {
+          const pDepth = JSON.parse(p['p_depths']);
+          player1GIR.push(pDepth[setLength - 1]);
+        });
+        let sumPlayer1GRA = player1GIR.reduce(
+          (a, b) => parseInt(a) + parseInt(b),
+          0
+        );
+        let p1GRA =
+          player1GIR.length > 0 ? sumPlayer1GRA / player1GIR.length : 0;
+
+        // get GIR of player2
+        let player2GIR = [];
+        triggerData['players_detail'][item['player2_id']].map((p) => {
+          const pDepth = JSON.parse(p['p_depths']);
+          player2GIR.push(pDepth[setLength - 1]);
+        });
+        let sumPlayer2GRA = player2GIR.reduce(
+          (a, b) => parseInt(a) + parseInt(b),
+          0
+        );
+        let p2GRA =
+          player2GIR.length > 0 ? sumPlayer2GRA / player2GIR.length : 0;
+
+        if (
+          (winner === 1 && p2GRA > p1GRA) ||
+          (winner === 2 && p1GRA > p2GRA)
+        ) {
+          if (setLength === 1) {
+            let itemExist = false;
+            filteredData1.map((f) => {
+              if (f['event_id'] === item['event_id']) {
+                itemExist = true;
+              }
+            });
+            // add new match
+            if (!itemExist) {
+              filteredData1.push(item);
+            }
+          } else if (setLength === 2) {
+            let itemExist = false;
+            filteredData2.map((f) => {
+              if (f['event_id'] === item['event_id']) {
+                itemExist = true;
+              }
+            });
+            // add new match
+            if (!itemExist) {
+              filteredData2.push(item);
+            }
+          } else if (setLength === 3) {
+            let itemExist = false;
+            filteredData3.map((f) => {
+              if (f['event_id'] === item['event_id']) {
+                itemExist = true;
+              }
+            });
+            // add new match
+            if (!itemExist) {
+              filteredData3.push(item);
+            }
+          }
         }
       }
     }
   });
-  return filteredData;
+  return {
+    set1: filteredData1,
+    set2: filteredData2,
+    set3: filteredData3,
+  };
+};
+
+// check value in one array is in other array or not
+export const itemNotExist = (array1, array2) => {
+  for (let i = 0; i < array1.length; i++) {
+    if (!array2.includes(array1[i]['event_id'])) {
+      return true;
+    }
+  }
+  return false;
 };

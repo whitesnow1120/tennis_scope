@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
+import PropTypes from 'prop-types';
 
-import { filterByRankOdd } from '../utils';
+import { GET_OPENED_DETAIL } from '../store/actions/types';
+import { filterByRankOdd, addInplayScores } from '../utils';
 import { getInplayData } from '../apis';
 import MatchItem from '../components/MatchItem';
 import {
@@ -15,7 +18,9 @@ import {
 import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
 
-const Inplay = () => {
+const Inplay = (props) => {
+  const { filterChanged, setFilterChanged, inplayScoreData } = props;
+  const dispatch = useDispatch();
   const rankFilter = localStorage.getItem('rankFilter');
   const [activeRank, setActiveRank] = useState(
     rankFilter === null ? '1' : rankFilter
@@ -38,38 +43,70 @@ const Inplay = () => {
   `;
 
   const handleSliderChange = (value) => {
+    dispatch({
+      type: GET_OPENED_DETAIL,
+      payload: {},
+    });
     setValues(value);
     setSliderValue(sliderValue === '0' ? '1' : '0');
     localStorage.setItem('sliderChanged', JSON.stringify(value));
   };
 
-  const handleSliderUpdate = (value) => {
-    setValues(value);
-  };
-
+  // update matches every 5 minutes
   useEffect(() => {
     const loadInplayData = async () => {
       const response = await getInplayData();
       if (response.status === 200) {
-        setInplayData(response.data);
-        const filteredData = filterByRankOdd(response.data, activeRank, values);
+        let activedRank = localStorage.getItem('rankFilter');
+        activedRank = activedRank === null ? '1' : activedRank;
+        let sliderValues = JSON.parse(localStorage.getItem('sliderChanged'));
+        sliderValues = sliderValues === null ? SLIDER_RANGE : sliderValues;
+        const data = response.data.inplay_detail;
+        const filteredData = filterByRankOdd(
+          data,
+          activedRank,
+          sliderValues,
+          1
+        );
+        setInplayData(data);
         setInplayFilteredData(filteredData);
       } else {
         setInplayData([]);
       }
       // Call the async function again
       setTimeout(function () {
-        loadInplayData();
-      }, 1000 * 60 * 10);
+        const pathName = window.location.pathname;
+        if (pathName.includes('/trigger')) {
+          loadInplayData();
+        }
+      }, 1000 * 60 * 5); // update every 5 minutes
     };
 
     loadInplayData();
   }, []);
 
+  // update matches every 4 seconds
   useEffect(() => {
-    const filteredData = filterByRankOdd(inplayData, activeRank, values);
-    setInplayFilteredData(filteredData);
-  }, [activeRank, sliderValue]);
+    setFilterChanged(!filterChanged);
+    let pathName = window.location.pathname;
+    const loadInplayScoreData = async () => {
+      const filteredDataByRankOdd = filterByRankOdd(
+        inplayData,
+        activeRank,
+        values,
+        1
+      );
+      const filteredData = addInplayScores(
+        filteredDataByRankOdd,
+        inplayScoreData
+      );
+      setInplayFilteredData(filteredData);
+    };
+
+    if (pathName.includes('/inplay') && inplayData.length > 0) {
+      loadInplayScoreData();
+    }
+  }, [inplayData, activeRank, sliderValue, inplayScoreData]);
 
   return (
     <>
@@ -95,7 +132,6 @@ const Inplay = () => {
             />
             <CustomSlider
               handleChange={handleSliderChange}
-              handleUpdate={handleSliderUpdate}
               values={values}
               domain={domain}
               step={SLIDER_STEP}
@@ -103,9 +139,9 @@ const Inplay = () => {
           </div>
           <div className="row mt-4">
             {inplayFilteredData.length > 0 ? (
-              inplayFilteredData.map((item) => (
+              inplayFilteredData.map((item, index) => (
                 <MatchItem
-                  key={item.id}
+                  key={index}
                   item={item}
                   type="inplay"
                   loading={loading}
@@ -120,6 +156,12 @@ const Inplay = () => {
       </section>
     </>
   );
+};
+
+Inplay.propTypes = {
+  filterChanged: PropTypes.bool,
+  setFilterChanged: PropTypes.func,
+  inplayScoreData: PropTypes.array,
 };
 
 export default Inplay;

@@ -502,6 +502,56 @@ p {
   margin-left: -11px;
 }
 
+.trigger1 {
+  display: flex;
+}
+
+.trigger1 .trigger1-set {
+  width: 10%;
+}
+
+.trigger1 .trigger1-set span {
+  color: #7c859c;
+}
+
+.trigger1 .trigger-border {
+  border-top: 1px solid #e8eaf2;
+  width: 100%;
+  margin-top: 11px;
+}
+
+.inplay-left {
+  display: inline-flex;
+  padding-left: 9px;
+  padding-top: 8px;
+}
+
+.inplay-left div {
+  margin-left: 8px;
+  margin-top: 7px;
+}
+
+.inplay-right {
+  display: inline-flex;
+  padding-top: 8px;
+}
+
+.inplay-right span {
+  padding-left: 8px;
+}
+
+.inplay-right div {
+  margin-top: 7px;
+  margin-left: -19px;
+}
+
+.inplay-green-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #53ab0b;
+}
+
 .new-trigger-box {
   border: 2px solid #89d46a !important;
 }
@@ -552,7 +602,8 @@ p {
 .history .row,
 .footer .row,
 .upcoming .row,
-.inplay .row {
+.inplay .row,
+.trigger .row {
   margin-left: 15px;
   margin-right: 15px;
 }
@@ -790,6 +841,12 @@ p {
   width: calc(50% - 10px);
 }
 
+.match-item .set-percent .set-percent-left,
+.match-item .set-percent .set-percent-right {
+  border-top: 1px solid #e8eaf2;
+  border-bottom: 1px solid #e8eaf2;
+}
+
 .match-item .set .set-right-box,
 .match-item .player-detail .player-detail-right,
 .match-item .set-percent .set-percent-right,
@@ -820,8 +877,6 @@ p {
 .match-item .set-percent .percent-sub-right {
   display: block;
   padding: 10px 10px 10px 0;
-  border-top: 1px solid #e8eaf2;
-  border-bottom: 1px solid #e8eaf2;
 }
 
 .match-item .player-detail,
@@ -838,20 +893,58 @@ p {
   margin-right: 5px;
 }
 
-.match-item .set-percent span:nth-child(1),
-.match-item .set-percent span:nth-child(3) {
+.match-item .set-percent div:nth-child(1) span,
+.match-item .set-percent div:nth-child(3) span {
   font-weight: 500;
   color: #7c859c;
 }
 
-.match-item .set-percent .percent-sub-left span:nth-child(2) {
+.match-item
+  .set-percent
+  .percent-sub-left
+  > div:nth-child(1)
+  > div:nth-child(2)
+  span,
+.match-item
+  .set-percent
+  .percent-sub-left
+  > div:nth-child(2)
+  > div:nth-child(2)
+  span {
   font-weight: bold;
   color: #53aa0b;
 }
 
-.match-item .set-percent .percent-sub-right span:nth-child(2) {
+.match-item
+  .set-percent
+  .percent-sub-right
+  > div:nth-child(2)
+  > div:nth-child(2)
+  span,
+.match-item
+  .set-percent
+  .percent-sub-right
+  > div:nth-child(1)
+  > div:nth-child(2)
+  span {
   font-weight: bold;
   color: #d54e45;
+}
+
+.match-item .win-win,
+.match-item .win-lose,
+.match-item .lose-win,
+.match-item .lose-lose {
+  display: flex;
+  justify-content: space-between;
+}
+
+.match-item .win-win div,
+.match-item .win-lose div,
+.match-item .lose-win div,
+.match-item .lose-lose div {
+  width: 30%;
+  text-align: center;
 }
 
 .match-item .set-percent .lose-win,
@@ -917,16 +1010,13 @@ p {
 .match-item .match-detail .opponent-detail .break-hold-detail .breaks-won,
 .match-item .match-detail .opponent-detail .break-hold-detail .breaks-lost,
 .match-item .match-detail .opponent-detail .break-hold-detail .games-hold {
-  width: calc(25% - 5px);
+  width: calc(20% - 5px);
   text-align: center;
   padding-bottom: 2px;
   padding-top: 2px;
 }
 
-.match-item
-  .match-detail
-  .opponent-detail
-  .opponent-ranking {
+.match-item .match-detail .opponent-detail .opponent-ranking {
   color: #fff;
   background-color: #474d5c;
   width: 100%;
@@ -940,39 +1030,48 @@ p {
 
 .match-item .opponent-sub-detail .player-odd,
 .match-item .opponent-sub-detail .opponent-raw,
-.match-item .opponent-sub-detail .opponent-ral {
-  width: calc(25% - 5px);
-}
-
-.match-item .opponent-sub-detail .player-odd {
-  text-align: center;
+.match-item .opponent-sub-detail .opponent-ral,
+.match-item .opponent-sub-detail .opponent-gir {
+  width: calc(30% - 15px);
 }
 
 .match-item .opponent-sub-detail .player-odd,
 .match-item .opponent-sub-detail .opponent-raw,
-.match-item .opponent-sub-detail .opponent-ral {
+.match-item .opponent-sub-detail .opponent-ral,
+.match-item .opponent-sub-detail .opponent-gir {
   padding-top: 2px;
+  text-align: center;
+}
+
+.match-item .opponent-sub-detail .opponent-raw {
+  text-align: left !important;
+}
+
+.match-item .opponent-sub-detail .opponent-gir {
+  text-align: right !important;
 }
 
 .match-item .opponent-sub-detail span {
-  color: #474d5c;
   font-weight: 500;
 }
 
 .match-item .opponent-sub-detail .player-odd span {
-  margin-left: -20px;
   font-weight: 700 !important;
   color: #474d5c;
+  margin-left: -15px;
+}
+
+.match-item .opponent-sub-detail .opponent-raw span:nth-child(1),
+.match-item .opponent-sub-detail .opponent-ral span:nth-child(1),
+.match-item .opponent-sub-detail .opponent-gir span:nth-child(1) {
+  color: #7c859c;
 }
 
 .match-item .opponent-sub-detail .opponent-raw span:nth-child(2),
-.match-item .opponent-sub-detail .opponent-ral span:nth-child(2) {
+.match-item .opponent-sub-detail .opponent-ral span:nth-child(2),
+.match-item .opponent-sub-detail .opponent-gir span:nth-child(2) {
   padding-left: 4px;
-}
-
-
-.match-item .opponent-sub-detail .opponent-ral {
-  text-align: right;
+  color: #474d5c;
 }
 
 .match-item .opponent-sub-detail .opponent-ranking span {

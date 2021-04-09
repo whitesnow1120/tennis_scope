@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
+import PropTypes from 'prop-types';
 
 import { filterByRankOdd } from '../utils';
 import { getHistoryData } from '../apis';
@@ -17,7 +18,8 @@ import MatchItem from '../components/MatchItem';
 import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
 
-const History = () => {
+const History = (props) => {
+  const { filterChanged, setFilterChanged } = props;
   const { historyDate } = useSelector((state) => state.tennis);
   const rankFilter = localStorage.getItem('rankFilter');
   const [activeRank, setActiveRank] = useState(
@@ -70,6 +72,7 @@ const History = () => {
   }, [historyDate]);
 
   useEffect(() => {
+    setFilterChanged(!filterChanged);
     const filteredData = filterByRankOdd(historyData, activeRank, values);
     setHistoryFilteredData(filteredData);
   }, [activeRank, sliderValue]);
@@ -126,6 +129,11 @@ const History = () => {
       </section>
     </>
   );
+};
+
+History.propTypes = {
+  filterChanged: PropTypes.bool,
+  setFilterChanged: PropTypes.func,
 };
 
 export default History;

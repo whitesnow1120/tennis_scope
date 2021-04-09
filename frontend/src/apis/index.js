@@ -36,20 +36,20 @@ export const getUpcomingData = async () => {
   }
 };
 
-export const getTrigger1Data = async () => {
-  try {
-    return await api.get('/trigger1');
-  } catch (err) {
-    console.log('error getting the trigger1');
-    return 0;
-  }
-};
-
 export const getInplayData = async () => {
   try {
     return await api.get('/inplay');
   } catch (err) {
     console.log('error getting the inplay');
+    return 0;
+  }
+};
+
+export const getInplayScoreData = async () => {
+  try {
+    return await api.post('/inplay-scores');
+  } catch (err) {
+    console.log('error getting the inplay scores');
     return 0;
   }
 };

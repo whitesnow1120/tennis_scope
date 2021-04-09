@@ -283,10 +283,14 @@ class TennisController extends Controller
      */
     public function getRelationPreCalculation($player1_id, $player2_id) {
         $bucket_players_name = "t_bucket_players_" . $player1_id . "_" . $player2_id;
+        $bucket_opponents_name = "t_bucket_opponents_" . $player1_id . "_" . $player2_id;
         if (!Schema::hasTable($bucket_players_name)) {
             $matches = $this->getRelationUnPreCalculation($player1_id, $player2_id);
             $player1_object = $matches[0];
             $player2_object = $matches[1];
+            // for testing
+            $opponent_object = DB::table($bucket_opponents_name)
+                                ->get();
         } else {
             $player1_object = DB::table($bucket_players_name)
                             ->select(
@@ -341,11 +345,15 @@ class TennisController extends Controller
                             )
                             ->where("p_id", $player2_id)
                             ->get();
+            
+            $opponent_object = DB::table($bucket_opponents_name)
+                                ->get();
         }
         
         return [
             $player1_id => $player1_object,
             $player2_id => $player2_object,
+            "opponents" => $opponent_object,
         ];
     }
 
@@ -354,96 +362,43 @@ class TennisController extends Controller
      * @param   array $inplay_data
      * @return  array $matches
      */
-    public function triggerFilter1($inplay_data) {
-        $filteredData = array();
-        foreach ($inplay_data as $data) {
-            // rule (set1 ended)
-            $match_scores = explode(",", $data["scores"]);
-            if (count($match_scores) >= 2) {
-                $player1_id = $data["player1_id"];
-                $player2_id = $data["player2_id"];
-                $player1_ranking = $data["player1_ranking"];
-                $player2_ranking = $data["player2_ranking"];
-                // rule 1 (one of players or both have rank)
-                if ($player1_ranking != '-' || $player2_ranking != '-') {
-                    // (both players have played at least 3 matches with same opponents)
-                    $bucket_players_name = "t_bucket_players_" . $player1_id . "_" . $player2_id;
-                    $player1_object = DB::table($bucket_players_name)
-                                        ->where('p_id', $player1_id)
-                                        ->whereNotNull('o_ranking')
-                                        ->get();
-                    
-                    $player1_oids = array();
-                    foreach ($player1_object as $player1) {
-                        array_push($player1_oids, $player1->o_id);
-                    }
-                    $player2_object = DB::table($bucket_players_name)
-                                        ->where('p_id', $player2_id)
-                                        ->whereNotNull('o_ranking')
-                                        ->get();
-    
-                    $same_oids = array();
-                    foreach ($player2_object as $player2) {
-                        if (in_array($player2->o_id, $player1_oids)) {
-                            array_push($same_oids, $player2->o_id);
-                        }
-                    }
-                    if (count($same_oids) >= 3) {
-                        // rule 3 (player with worst rank lost set 1)
-                        $worst_rank_player = 0;
-                        if ($player1_ranking == "-") {
-                            $worst_rank_player = 1;
-                        } else if ($player2_ranking == "-") {
-                            $worst_rank_player = 2;
-                        }
-                        if ($player1_ranking != "-" && $player2_ranking != "-") {
-                            if ($player1_ranking < $player2_ranking) {
-                                $worst_rank_player = 2;
-                            } else {
-                                $worst_rank_player = 1;
-                            }
-                        }
-                        $scores = explode(",", $data["scores"]);
-                        if (count($scores) > 0) {
-                            $set1 = explode("-", $scores[0]);
-                            if (($set1[0] > $set1[1] && $worst_rank_player == 2) || ($set1[0] < $set1[1] && $worst_rank_player == 1)) {
-                                // rule 4 (player with worst rank has more sets won with SO)
-                                // player 1 sets won count with SO
-                                $player1_won_count = 0;
-                                foreach ($player1_object as $player1) {
-                                    if (in_array($player1->o_id, $same_oids)) {
-                                        $performance = [
-                                            $player1->p_ww,
-                                            $player1->p_lw,
-                                        ];
-                                        $won_count = $this->getPlayerWonCount($performance);
-                                        $player1_won_count += $won_count;
-                                    }
-                                }
-    
-                                $player2_won_count = 0;
-                                foreach ($player2_object as $player2) {
-                                    if (in_array($player2->o_id, $same_oids)) {
-                                        $performance = [
-                                            $player2->p_ww,
-                                            $player2->p_lw,
-                                        ];
-                                        $won_count = $this->getPlayerWonCount($performance);
-                                        $player2_won_count += $won_count;
-                                    }
-                                }
-    
-                                if (($worst_rank_player == 1 && $player1_won_count > $player2_won_count) 
-                                    || ($worst_rank_player == 2 && $player2_won_count > $player1_won_count)) {
-                                    array_push($filteredData, $data);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    public function triggerFilter1($inplay_matches) {
+        $players_detail = array();
+        // get player details
+        foreach ($inplay_matches as $match) {
+            $surface = $match["surface"];
+            $player1_id = $match["player1_id"];
+            $player1_ranking = $match["player1_ranking"] === "-" ? 9999 : (int)$match["player1_ranking"];
+            $player2_id = $match["player2_id"];
+            $player2_ranking = $match["player2_ranking"] === "-" ? 9999 : (int)$match["player2_ranking"];
+            $bucket_table = "t_bucket_players_" . $player1_id . "_" . $player2_id;
+            $player1_detail = DB::table($bucket_table)
+                                ->select(
+                                    "p_depths",
+                                    "time",
+                                )
+                                ->where("surface", $surface) // surface filter
+                                ->where("p_id", $player1_id)
+                                ->where("o_ranking", "<", $player1_ranking) // HIR filter
+                                ->orderByDesc("time")
+                                ->limit(10)
+                                ->get();
+            $player2_detail = DB::table($bucket_table)
+                                ->select(
+                                    "p_depths",
+                                    "time",
+                                )
+                                ->where("surface", $surface) // surface filter
+                                ->where("p_id", $player2_id)
+                                ->where("o_ranking", "<", $player2_ranking) // HIR filter
+                                ->orderByDesc("time")
+                                ->limit(10)
+                                ->get();
+            $players_detail[$player1_id] = $player1_detail;
+            $players_detail[$player2_id] = $player2_detail;
         }
-        return $filteredData;
+
+        return $players_detail;
     }
 
     /**
@@ -484,23 +439,25 @@ class TennisController extends Controller
         }
     }
 
-    public function inplay(Request $request) {
+    public function inplayScoreUpdate(Request $request) {
         try {
-            $inplay_data = $this->getMatches(null, 1); // time_status (1: inplay)
-            return response()->json($inplay_data, 200);
+            $current_scores = DB::table("t_inplay")
+                                ->get();
+            return response()->json($current_scores, 200);
         } catch (Exception $e) {
             return response()->json([], 500);
         }
     }
 
-    /**
-     * Trigger1 Request
-     */
-    public function trigger1(Request $request) {
+    public function inplay(Request $request) {
         try {
-            $trigger1_data = $this->getMatches(null, 1);
-            $filteredData = $this->triggerFilter1($trigger1_data);
-            return response()->json($filteredData, 200);
+            $inplay_data = $this->getMatches(null, 1); // time_status (1: inplay)
+            $players_detail = $this->triggerFilter1($inplay_data);
+            $response = [
+                "inplay_detail" => $inplay_data,
+                "players_detail" => $players_detail,
+            ];
+            return response()->json($response, 200);
         } catch (Exception $e) {
             return response()->json([], 500);
         }

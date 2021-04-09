@@ -18,11 +18,12 @@ import PlayerDetail from './InplayDetail/PlayerDetail';
 import AverageRanks from './InplayDetail/AverageRanks';
 
 const MatchItem = (props) => {
-  const { item, type, loading, setLoading, newIds } = props;
+  const { item, type, loading, setLoading, triggerSet } = props;
   const dispatch = useDispatch();
   const { relationData, openedDetail } = useSelector((state) => state.tennis);
 
   const [detailOpened, setDetailOpened] = useState(false);
+  const [isClicked, setClicked] = useState();
   const [selectedSurface, setSelectedSurface] = useState('ALL');
   const [selectedRankDiff1, setSelectedRankDiff1] = useState('ALL');
   const [selectedRankDiff2, setSelectedRankDiff2] = useState('ALL');
@@ -30,14 +31,56 @@ const MatchItem = (props) => {
   const [selectedLimit, setSelectedLimit] = useState(10);
   const [selectedSet1, setSelectedSet1] = useState('ALL');
   const [selectedSet2, setSelectedSet2] = useState('ALL');
-  const newBox =
-    type === 'trigger1' && newIds.includes(item['event_id'])
-      ? 'match-box new-trigger-box'
-      : 'match-box';
-
+  // set initial box style
+  const [boxStyle, setBoxStyle] = useState('match-box');
   const player = getWinner(item.scores);
   const datetime = formatDateTime(item.time);
-  const scores = item.scores.split(',');
+  let scores = item.scores.split(',');
+  if (type === 'inplay' || type === 'trigger1') {
+    scores = item['ss'].split(',');
+  }
+
+  useEffect(() => {
+    if (type === 'trigger1' || type === 'trigger2') {
+      let clickedEvents = null;
+      if (type === 'trigger1') {
+        clickedEvents = JSON.parse(
+          localStorage.getItem('clickedEventsTrigger1')
+        );
+      } else {
+        clickedEvents = JSON.parse(
+          localStorage.getItem('clickedEventsTrigger2')
+        );
+      }
+      if (clickedEvents === null) {
+        clickedEvents = {
+          set1: [],
+          set2: [],
+          set3: [],
+        };
+      }
+      if (
+        (triggerSet === 1 &&
+          !clickedEvents['set1'].includes(item['event_id'])) ||
+        (triggerSet === 2 &&
+          !clickedEvents['set2'].includes(item['event_id'])) ||
+        (triggerSet === 3 && !clickedEvents['set3'].includes(item['event_id']))
+      ) {
+        setBoxStyle('match-box new-trigger-box');
+      } else {
+        setBoxStyle('match-box');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      (type === 'trigger1' && isClicked) ||
+      (type === 'trigger2' && isClicked)
+    ) {
+      setBoxStyle('match-box');
+    }
+  }, [isClicked]);
 
   useEffect(() => {
     const loadRelationData = async () => {
@@ -137,11 +180,59 @@ const MatchItem = (props) => {
       type: GET_OPENED_DETAIL,
       payload: data,
     });
+    // add event_ids to localstorage for trigger1
+    if (type === 'trigger1' || type === 'trigger2') {
+      let clickedEvents = null;
+      if (type === 'trigger1') {
+        clickedEvents = JSON.parse(
+          localStorage.getItem('clickedEventsTrigger1')
+        );
+      } else {
+        clickedEvents = JSON.parse(
+          localStorage.getItem('clickedEventsTrigger2')
+        );
+      }
+      if (clickedEvents === null) {
+        clickedEvents = {
+          set1: [],
+          set2: [],
+          set3: [],
+        };
+      }
+      if (
+        triggerSet === 1 &&
+        !clickedEvents['set1'].includes(item['event_id'])
+      ) {
+        clickedEvents['set1'].push(item['event_id']);
+      } else if (
+        triggerSet === 2 &&
+        !clickedEvents['set2'].includes(item['event_id'])
+      ) {
+        clickedEvents['set2'].push(item['event_id']);
+      } else if (
+        triggerSet === 3 &&
+        !clickedEvents['set3'].includes(item['event_id'])
+      ) {
+        clickedEvents['set3'].push(item['event_id']);
+      }
+      if (type === 'trigger1') {
+        localStorage.setItem(
+          'clickedEventsTrigger1',
+          JSON.stringify(clickedEvents)
+        );
+      } else {
+        localStorage.setItem(
+          'clickedEventsTrigger2',
+          JSON.stringify(clickedEvents)
+        );
+      }
+      setClicked(true);
+    }
   };
 
   return (
     <div className="col-lg-4 col-md-6 col-sm-6 col-xs-12 mb-2 pb-2 pt-2 match-item">
-      <div className={newBox}>
+      <div className={boxStyle}>
         <div className="current-match" onClick={handleMatchClicked}>
           <div className="left">
             <div className="name">
@@ -216,7 +307,20 @@ const MatchItem = (props) => {
             <div className="match-time">
               {type === 'history' && <span>-</span>}
               {type === 'upcoming' && <span>{datetime[1]}</span>}
-              {(type === 'inplay' || type === 'trigger1') && <span>-</span>}
+              {(type === 'inplay' || type === 'trigger1') &&
+                (item['indicator'] === '0,1' ? (
+                  <div className="inplay-left">
+                    <span>{item['points']}</span>
+                    <div className="inplay-green-dot"></div>
+                  </div>
+                ) : item['indicator'] === '1,0' ? (
+                  <div className="inplay-right">
+                    <div className="inplay-green-dot"></div>
+                    <span>{item['points']}</span>
+                  </div>
+                ) : (
+                  <div className="inplay-right"></div>
+                ))}
             </div>
           </div>
         </div>
@@ -297,7 +401,7 @@ MatchItem.propTypes = {
   type: PropTypes.string,
   loading: PropTypes.bool,
   setLoading: PropTypes.func,
-  newIds: PropTypes.array,
+  triggerSet: PropTypes.number,
 };
 
 export default MatchItem;

@@ -20,7 +20,7 @@ const BreakHoldDetail = (props) => {
           <span>{gah}</span>
         </div>
         <div className="games-hold">
-          <span>GRA</span>
+          <span>GIR</span>
           <span>{gra}</span>
         </div>
       </div>

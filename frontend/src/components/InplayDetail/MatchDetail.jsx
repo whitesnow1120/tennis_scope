@@ -83,7 +83,12 @@ const MatchDetail = (props) => {
     <>
       <div className="match-detail">
         <div className="opponent-detail">
-          <OpponentDetail playerOdd={playerOdd}>
+          <OpponentDetail
+            playerOdd={playerOdd}
+            oRW={Math.round(match['oRW'])}
+            oRL={Math.round(match['oRL'])}
+            oGIR={match['oGIR']}
+          >
             <TooltipComponent
               className="tooltip-box"
               content={tooltipContent}

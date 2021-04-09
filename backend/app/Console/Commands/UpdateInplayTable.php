@@ -5,21 +5,21 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Helpers\Helper;
 
-class UpdateDB extends Command
+class UpdateInplayTable extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'update:db';
+    protected $signature = 'update:inplay';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Update Tennis DB every 10 minutes';
+    protected $description = 'Update t_inplay table every 5 secs';
 
     /**
      * Create a new command instance.
@@ -33,10 +33,11 @@ class UpdateDB extends Command
 
     /**
      * Execute the console command.
+     *
+     * @return int
      */
     public function handle()
     {
-        Helper::updateDB();
-        // Helper::preCalculation();
+        Helper::updateInplayTable();
     }
 }

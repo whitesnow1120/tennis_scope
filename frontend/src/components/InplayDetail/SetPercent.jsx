@@ -49,26 +49,50 @@ const SetPercent = (props) => {
     <>
       <div className="percent-sub-left">
         <div className="win-win">
-          <span>{'W>W'}</span>
-          <span>{wwCount}</span>
-          <span>[{wwPercent}%]</span>
+          <div>
+            <span>{'W>W'}</span>
+          </div>
+          <div>
+            <span>{wwCount}</span>
+          </div>
+          <div>
+            <span>[{wwPercent}%]</span>
+          </div>
         </div>
         <div className="lose-win">
-          <span>{'L>W'}</span>
-          <span>{wlCount}</span>
-          <span>[{wlPercent}%]</span>
+          <div>
+            <span>{'L>W'}</span>
+          </div>
+          <div>
+            <span>{wlCount}</span>
+          </div>
+          <div>
+            <span>[{wlPercent}%]</span>
+          </div>
         </div>
       </div>
       <div className="percent-sub-right">
         <div className="win-lose">
-          <span>{'W>L'}</span>
-          <span>{lwCount}</span>
-          <span>[{lwPercent}%]</span>
+          <div>
+            <span>{'W>L'}</span>
+          </div>
+          <div>
+            <span>{lwCount}</span>
+          </div>
+          <div>
+            <span>[{lwPercent}%]</span>
+          </div>
         </div>
         <div className="lose-lose">
-          <span>{'L>L'}</span>
-          <span>{llCount}</span>
-          <span>[{llPercent}%]</span>
+          <div>
+            <span>{'L>L'}</span>
+          </div>
+          <div>
+            <span>{llCount}</span>
+          </div>
+          <div>
+            <span>[{llPercent}%]</span>
+          </div>
         </div>
       </div>
     </>

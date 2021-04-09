@@ -14,6 +14,7 @@ import InPlay from './pages/InPlay';
 import Upcoming from './pages/Upcoming';
 import History from './pages/History';
 import Trigger1 from './pages/Trigger1';
+import Trigger2 from './pages/Trigger2';
 import AccountSetting from './pages/AccountSetting';
 import AboutUs from './pages/AboutUs';
 import Pricing from './pages/Pricing';
@@ -27,18 +28,55 @@ const AppRouter = () => {
   });
   const store = createStore(rootReducer, applyMiddleware(thunk));
   const [activeMenu, setActiveMenu] = useState(0);
+  const [filterChanged, setFilterChanged] = useState(false);
+  const [inplayScoreData, setInplayScoreData] = useState([]);
 
   return (
     <Provider store={store}>
       <Router basename="/">
         <ScrollUpButton />
-        <Header activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
+        <Header
+          activeMenu={activeMenu}
+          setActiveMenu={setActiveMenu}
+          filterChanged={filterChanged}
+          setFilterChanged={setFilterChanged}
+          setInplayScoreData={setInplayScoreData}
+        />
         <Switch>
           <Route path="/" exact component={SignIn} />
-          <Route path="/inplay" exact component={InPlay} />
-          <Route path="/upcoming" exact component={Upcoming} />
-          <Route path="/history" exact component={History} />
-          <Route path="/trigger1" exact component={Trigger1} />
+          <Route path="/inplay" exact>
+            <InPlay
+              filterChanged={filterChanged}
+              setFilterChanged={setFilterChanged}
+              inplayScoreData={inplayScoreData}
+            />
+          </Route>
+          <Route path="/upcoming" exact>
+            <Upcoming
+              filterChanged={filterChanged}
+              setFilterChanged={setFilterChanged}
+            />
+          </Route>
+          <Route path="/history" exact>
+            <History
+              filterChanged={filterChanged}
+              setFilterChanged={setFilterChanged}
+            />
+          </Route>
+          <Route path="/trigger1" exact>
+            <Trigger1
+              filterChanged={filterChanged}
+              setFilterChanged={setFilterChanged}
+              inplayScoreData={inplayScoreData}
+            />
+          </Route>
+          <Route path="/trigger2" exact>
+            <Trigger2
+              filterChanged={filterChanged}
+              setFilterChanged={setFilterChanged}
+              inplayScoreData={inplayScoreData}
+            />
+          </Route>
           <Route path="/account-setting" exact component={AccountSetting} />
           <Route path="/about-us" exact component={AboutUs} />
           <Route path="/pricing" exact component={Pricing} />

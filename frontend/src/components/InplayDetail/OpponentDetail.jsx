@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 const OpponentDetail = (props) => {
-  const { playerOdd, children } = props;
+  const { playerOdd, oRW, oRL, oGIR, children } = props;
 
   return (
     <>
@@ -12,12 +12,16 @@ const OpponentDetail = (props) => {
           <span>{playerOdd.toString()}</span>
         </div>
         <div className="opponent-raw">
-          <span>RAW:</span>
-          <span>{0}</span>
+          <span>RW:</span>
+          <span>{oRW}</span>
         </div>
         <div className="opponent-ral">
-          <span>RAL:</span>
-          <span>{0}</span>
+          <span>RL:</span>
+          <span>{oRL}</span>
+        </div>
+        <div className="opponent-gir">
+          <span>GIR:</span>
+          <span>{oGIR}</span>
         </div>
       </div>
     </>
@@ -26,6 +30,9 @@ const OpponentDetail = (props) => {
 
 OpponentDetail.propTypes = {
   playerOdd: PropTypes.string,
+  oRW: PropTypes.number,
+  oRL: PropTypes.number,
+  oGIR: PropTypes.any,
   children: PropTypes.any,
 };
 

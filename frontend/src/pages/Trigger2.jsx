@@ -18,18 +18,18 @@ import {
 import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
 
-const Trigger1 = (props) => {
+const Trigger2 = (props) => {
   const { inplayScoreData } = props;
   const dispatch = useDispatch();
   const rankFilter = localStorage.getItem('rankFilter');
   const [activeRank, setActiveRank] = useState(
     rankFilter === null ? '1' : rankFilter
   );
-  const [trigger1Data, setTrigger1Data] = useState({
+  const [trigger2Data, setTrigger2Data] = useState({
     inplay_detail: [],
     players_detail: [],
   });
-  const [trigger1DataBySet, setTrigger1DataBySet] = useState({
+  const [trigger2DataBySet, setTrigger2DataBySet] = useState({
     set1: [],
     set2: [],
     set3: [],
@@ -61,28 +61,28 @@ const Trigger1 = (props) => {
   };
 
   useEffect(() => {
-    const loadTrigger1Data = async () => {
+    const loadTrigger2Data = async () => {
       const response = await getInplayData();
       if (response.status === 200) {
-        setTrigger1Data(response.data);
+        setTrigger2Data(response.data);
       } else {
-        setTrigger1Data([]);
+        setTrigger2Data([]);
       }
       // Call the async function again
       setTimeout(function () {
-        loadTrigger1Data();
+        loadTrigger2Data();
       }, 1000 * 60 * 5);
     };
 
-    loadTrigger1Data();
+    loadTrigger2Data();
   }, []);
 
   // update matches every 4 seconds
   useEffect(() => {
     const pathName = window.location.pathname;
-    const loadTrigger1ScoreData = async () => {
+    const loadTrigger2ScoreData = async () => {
       const filteredDataByRankOdd = filterByRankOdd(
-        trigger1Data['inplay_detail'],
+        trigger2Data['inplay_detail'],
         activeRank,
         values,
         1
@@ -93,11 +93,11 @@ const Trigger1 = (props) => {
       );
       const data = {
         inplay_detail: filteredData,
-        players_detail: trigger1Data['players_detail'],
+        players_detail: trigger2Data['players_detail'],
       };
-      const filteredTrigger1Data = filterTrigger1(data, trigger1DataBySet, 1);
+      const filteredTrigger2Data = filterTrigger1(data, trigger2DataBySet, 2);
       let clickedEvents = JSON.parse(
-        localStorage.getItem('clickedEventsTrigger1')
+        localStorage.getItem('clickedEventsTrigger2')
       );
       if (clickedEvents === null) {
         clickedEvents = {
@@ -106,26 +106,26 @@ const Trigger1 = (props) => {
           set3: [],
         };
       }
-      if (filteredTrigger1Data['set1'].length === 0) {
+      if (filteredTrigger2Data['set1'].length === 0) {
         clickedEvents['set1'] = [];
       }
-      if (filteredTrigger1Data['set2'].length === 0) {
+      if (filteredTrigger2Data['set2'].length === 0) {
         clickedEvents['set2'] = [];
       }
-      if (filteredTrigger1Data['set3'].length === 0) {
+      if (filteredTrigger2Data['set3'].length === 0) {
         clickedEvents['set3'] = [];
       }
       localStorage.setItem(
-        'clickedEventsTrigger1',
+        'clickedEventsTrigger2',
         JSON.stringify(clickedEvents)
       );
-      const set1Ids = filteredTrigger1Data['set1'].map((f) => {
+      const set1Ids = filteredTrigger2Data['set1'].map((f) => {
         return f['event_id'];
       });
-      const set2Ids = filteredTrigger1Data['set2'].map((f) => {
+      const set2Ids = filteredTrigger2Data['set2'].map((f) => {
         return f['event_id'];
       });
-      const set3Ids = filteredTrigger1Data['set3'].map((f) => {
+      const set3Ids = filteredTrigger2Data['set3'].map((f) => {
         return f['event_id'];
       });
       const eventIds = {
@@ -134,22 +134,22 @@ const Trigger1 = (props) => {
         set3: set3Ids,
       };
       localStorage.setItem('trigger1', JSON.stringify(eventIds));
-      setTrigger1DataBySet(filteredTrigger1Data);
+      setTrigger2DataBySet(filteredTrigger2Data);
     };
 
     if (
-      pathName.includes('/trigger1') &&
-      'inplay_detail' in trigger1Data &&
-      trigger1Data['inplay_detail'].length > 0
+      pathName.includes('/trigger2') &&
+      'inplay_detail' in trigger2Data &&
+      trigger2Data['inplay_detail'].length > 0
     ) {
-      loadTrigger1ScoreData();
+      loadTrigger2ScoreData();
     }
-  }, [trigger1Data, activeRank, sliderValue, inplayScoreData]);
+  }, [trigger2Data, activeRank, sliderValue, inplayScoreData]);
 
   return (
     <>
       <Helmet>
-        <title>{SITE_SEO_TITLE} : Trigger1</title>
+        <title>{SITE_SEO_TITLE} : Trigger2</title>
         <meta property="og:title" content={SITE_SEO_TITLE} />
         <meta name="description" content={SITE_SEO_DESCRIPTION} />
         <meta property="og:description" content={SITE_SEO_DESCRIPTION} />
@@ -182,8 +182,8 @@ const Trigger1 = (props) => {
               </div>
               <div className="trigger-border"></div>
             </div>
-            {trigger1DataBySet['set1'].length > 0 ? (
-              trigger1DataBySet['set1'].map((item) => (
+            {trigger2DataBySet['set1'].length > 0 ? (
+              trigger2DataBySet['set1'].map((item) => (
                 <MatchItem
                   key={item.id}
                   item={item}
@@ -204,12 +204,12 @@ const Trigger1 = (props) => {
               </div>
               <div className="trigger-border"></div>
             </div>
-            {trigger1DataBySet['set2'].length > 0 ? (
-              trigger1DataBySet['set2'].map((item) => (
+            {trigger2DataBySet['set2'].length > 0 ? (
+              trigger2DataBySet['set2'].map((item) => (
                 <MatchItem
                   key={item.id}
                   item={item}
-                  type="trigger1"
+                  type="trigger2"
                   triggerSet={2}
                   loading={loading}
                   setLoading={setLoading}
@@ -226,12 +226,12 @@ const Trigger1 = (props) => {
               </div>
               <div className="trigger-border"></div>
             </div>
-            {trigger1DataBySet['set3'].length > 0 ? (
-              trigger1DataBySet['set3'].map((item) => (
+            {trigger2DataBySet['set3'].length > 0 ? (
+              trigger2DataBySet['set3'].map((item) => (
                 <MatchItem
                   key={item.id}
                   item={item}
-                  type="trigger1"
+                  type="trigger2"
                   triggerSet={3}
                   loading={loading}
                   setLoading={setLoading}
@@ -247,8 +247,8 @@ const Trigger1 = (props) => {
   );
 };
 
-Trigger1.propTypes = {
+Trigger2.propTypes = {
   inplayScoreData: PropTypes.array,
 };
 
-export default Trigger1;
+export default Trigger2;
