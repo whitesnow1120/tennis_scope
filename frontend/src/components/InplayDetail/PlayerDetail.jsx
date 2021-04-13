@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
+// import { useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 
 import BreakHoldDetail from './BreakHoldDetail';
@@ -7,8 +7,8 @@ import SetPercent from './SetPercent';
 import MatchDetail from './MatchDetail';
 
 const PlayerDetail = (props) => {
-  const { player1_id, player2_id } = props;
-  const { filteredRelationData } = useSelector((state) => state.tennis);
+  const { player1_id, player2_id, filteredRelationData } = props;
+  // const { filteredRelationData } = useSelector((state) => state.tennis);
   const [player1BRW, setPlayer1BRW] = useState(0);
   const [player1BRL, setPlayer1BRL] = useState(0);
   const [player1GAH, setPlayer1GAH] = useState(0);
@@ -64,10 +64,16 @@ const PlayerDetail = (props) => {
       </div>
       <div className="set-percent">
         <div className="set-percent-left">
-          <SetPercent player_id={player1_id} />
+          <SetPercent
+            player_id={player1_id}
+            filteredRelationData={filteredRelationData}
+          />
         </div>
         <div className="set-percent-right">
-          <SetPercent player_id={player2_id} />
+          <SetPercent
+            player_id={player2_id}
+            filteredRelationData={filteredRelationData}
+          />
         </div>
       </div>
       <div className="match-details">
@@ -95,6 +101,7 @@ const PlayerDetail = (props) => {
 PlayerDetail.propTypes = {
   player1_id: PropTypes.number,
   player2_id: PropTypes.number,
+  filteredRelationData: PropTypes.object,
 };
 
 export default PlayerDetail;

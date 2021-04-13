@@ -15,7 +15,6 @@ import {
 import { GET_USER_STATUS } from '../store/actions/types';
 import BrowserButtonListener from './BrowserButtonListener';
 import logo from '../assets/img/logo.png';
-import logout from '../assets/img/logout.png';
 import ding from '../assets/ding.mp3';
 
 const Header = (props) => {
@@ -43,7 +42,7 @@ const Header = (props) => {
     set2: [],
     set3: [],
   });
-  const [play] = useSound(ding, { interrupt: true });
+  const [play, { stop }] = useSound(ding);
   const [played1, setPlayed1] = useState(false);
   const [played2, setPlayed2] = useState(false);
 
@@ -67,7 +66,6 @@ const Header = (props) => {
 
   // update matches every 4 seconds
   useEffect(() => {
-    let pathName = window.location.pathname;
     const loadTriggerScoreData = async () => {
       const response = await getInplayScoreData();
       if (response.status === 200) {
@@ -110,10 +108,16 @@ const Header = (props) => {
           itemNotExist(filteredTrigger1Data['set3'], trigger1['set3'])
         ) {
           if (!played1) {
+            stop();
             play();
             setPlayed1(true);
           }
-          setNewTrigger1(true);
+          const pathName = window.location.pathname;
+          if (!pathName.includes('trigger1')) {
+            setNewTrigger1(true);
+          } else {
+            setNewTrigger1(false);
+          }
         } else {
           setNewTrigger1(false);
         }
@@ -135,10 +139,16 @@ const Header = (props) => {
           itemNotExist(filteredTrigger2Data['set3'], trigger2['set3'])
         ) {
           if (!played2) {
+            stop();
             play();
             setPlayed2(true);
           }
-          setNewTrigger2(true);
+          const pathName = window.location.pathname;
+          if (!pathName.includes('trigger2')) {
+            setNewTrigger2(true);
+          } else {
+            setNewTrigger2(false);
+          }
         } else {
           setNewTrigger2(false);
         }
@@ -146,9 +156,7 @@ const Header = (props) => {
       }
     };
     const timer = window.setInterval(() => {
-      pathName = window.location.pathname;
       if (
-        !pathName.includes('/trigger') &&
         'inplay_detail' in triggerData &&
         triggerData['inplay_detail'].length > 0
       ) {
@@ -157,7 +165,6 @@ const Header = (props) => {
     }, 1000 * 4);
 
     if (
-      pathName.includes('/trigger') &&
       'inplay_detail' in triggerData &&
       triggerData['inplay_detail'].length > 0
     ) {
@@ -180,6 +187,8 @@ const Header = (props) => {
       setActiveMenu(4);
     } else if (pathName.includes('/trigger2')) {
       setActiveMenu(5);
+    } else if (pathName.includes('/robots')) {
+      setActiveMenu(20);
     } else if (pathName.includes('/account-setting')) {
       setActiveMenu(6);
     } else if (pathName.includes('/about-us')) {
@@ -201,11 +210,11 @@ const Header = (props) => {
   const handleMenuItemClicked = (menu) => {
     setActiveMenu(menu);
     if (menu === 4) {
-      setNewTrigger1(false);
       setPlayed1(false);
+      setNewTrigger1(false);
     } else if (menu === 5) {
-      setNewTrigger2(false);
       setPlayed2(false);
+      setNewTrigger2(false);
     }
   };
 
@@ -279,6 +288,15 @@ const Header = (props) => {
                 </Link>
                 {newTrigger2 && <div className="green-dot"></div>}
               </li>
+              <li className="navigation-item">
+                <Link
+                  className={activeMenu === 20 ? 'active' : ''}
+                  to={`/robots`}
+                  onClick={() => handleMenuItemClicked(20)}
+                >
+                  Robots
+                </Link>
+              </li>
             </ul>
             <div id="account">
               <ul className="navigation-menu float-right">
@@ -297,7 +315,7 @@ const Header = (props) => {
                   </a>
                 </li>
                 <span onClick={() => handleLogout()}>
-                  <img src={logout} alt="logout" />
+                  <i className="fal fa-sign-out"></i>
                 </span>
               </ul>
             </div>

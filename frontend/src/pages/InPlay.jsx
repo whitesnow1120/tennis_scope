@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+// import { useDispatch } from 'react-redux';
 import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
 import PropTypes from 'prop-types';
 
-import { GET_OPENED_DETAIL } from '../store/actions/types';
+// import { GET_OPENED_DETAIL } from '../store/actions/types';
 import { filterByRankOdd, addInplayScores } from '../utils';
 import { getInplayData } from '../apis';
 import MatchItem from '../components/MatchItem';
@@ -20,8 +20,12 @@ import CustomSlider from '../components/CustomSlider/slider';
 
 const Inplay = (props) => {
   const { filterChanged, setFilterChanged, inplayScoreData } = props;
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch();
   const rankFilter = localStorage.getItem('rankFilter');
+  const [openedDetail, setOpenedDetail] = useState({
+    p1_id: '',
+    p2_id: '',
+  });
   const [activeRank, setActiveRank] = useState(
     rankFilter === null ? '1' : rankFilter
   );
@@ -43,10 +47,7 @@ const Inplay = (props) => {
   `;
 
   const handleSliderChange = (value) => {
-    dispatch({
-      type: GET_OPENED_DETAIL,
-      payload: {},
-    });
+    setOpenedDetail({});
     setValues(value);
     setSliderValue(sliderValue === '0' ? '1' : '0');
     localStorage.setItem('sliderChanged', JSON.stringify(value));
@@ -57,17 +58,8 @@ const Inplay = (props) => {
     const loadInplayData = async () => {
       const response = await getInplayData();
       if (response.status === 200) {
-        let activedRank = localStorage.getItem('rankFilter');
-        activedRank = activedRank === null ? '1' : activedRank;
-        let sliderValues = JSON.parse(localStorage.getItem('sliderChanged'));
-        sliderValues = sliderValues === null ? SLIDER_RANGE : sliderValues;
         const data = response.data.inplay_detail;
-        const filteredData = filterByRankOdd(
-          data,
-          activedRank,
-          sliderValues,
-          1
-        );
+        const filteredData = filterByRankOdd(data, activeRank, values, 1);
         setInplayData(data);
         setInplayFilteredData(filteredData);
       } else {
@@ -87,7 +79,6 @@ const Inplay = (props) => {
 
   // update matches every 4 seconds
   useEffect(() => {
-    setFilterChanged(!filterChanged);
     let pathName = window.location.pathname;
     const loadInplayScoreData = async () => {
       const filteredDataByRankOdd = filterByRankOdd(
@@ -107,6 +98,10 @@ const Inplay = (props) => {
       loadInplayScoreData();
     }
   }, [inplayData, activeRank, sliderValue, inplayScoreData]);
+
+  useEffect(() => {
+    setFilterChanged(!filterChanged);
+  }, [activeRank, sliderValue]);
 
   return (
     <>
@@ -146,6 +141,8 @@ const Inplay = (props) => {
                   type="inplay"
                   loading={loading}
                   setLoading={setLoading}
+                  setOpenedDetail={setOpenedDetail}
+                  openedDetail={openedDetail}
                 />
               ))
             ) : (

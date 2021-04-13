@@ -15,6 +15,7 @@ import Upcoming from './pages/Upcoming';
 import History from './pages/History';
 import Trigger1 from './pages/Trigger1';
 import Trigger2 from './pages/Trigger2';
+import Robots from './pages/Robots';
 import AccountSetting from './pages/AccountSetting';
 import AboutUs from './pages/AboutUs';
 import Pricing from './pages/Pricing';
@@ -39,7 +40,6 @@ const AppRouter = () => {
           activeMenu={activeMenu}
           setActiveMenu={setActiveMenu}
           filterChanged={filterChanged}
-          setFilterChanged={setFilterChanged}
           setInplayScoreData={setInplayScoreData}
         />
         <Switch>
@@ -76,6 +76,9 @@ const AppRouter = () => {
               setFilterChanged={setFilterChanged}
               inplayScoreData={inplayScoreData}
             />
+          </Route>
+          <Route path="/robots" exact>
+            <Robots />
           </Route>
           <Route path="/account-setting" exact component={AccountSetting} />
           <Route path="/about-us" exact component={AboutUs} />

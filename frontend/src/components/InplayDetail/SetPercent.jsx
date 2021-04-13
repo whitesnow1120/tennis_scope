@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+// import { useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 
 const SetPercent = (props) => {
-  const { player_id } = props;
-  const { filteredRelationData } = useSelector((state) => state.tennis);
+  const { player_id, filteredRelationData } = props;
+  // const { filteredRelationData } = useSelector((state) => state.tennis);
 
   const [wwCount, setWWCount] = useState(0);
   const [wlCount, setWLCount] = useState(0);
@@ -101,6 +101,7 @@ const SetPercent = (props) => {
 
 SetPercent.propTypes = {
   player_id: PropTypes.number,
+  filteredRelationData: PropTypes.object,
 };
 
 export default SetPercent;

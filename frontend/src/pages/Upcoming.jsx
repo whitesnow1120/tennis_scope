@@ -18,6 +18,10 @@ import CustomSlider from '../components/CustomSlider/slider';
 
 const Upcoming = (props) => {
   const { filterChanged, setFilterChanged } = props;
+  const [openedDetail, setOpenedDetail] = useState({
+    p1_id: '',
+    p2_id: '',
+  });
   const [upcomingData, setUpcomingData] = useState([]);
   const [upcomingFilteredData, setUpcomingFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -53,8 +57,8 @@ const Upcoming = (props) => {
     const loadUpcomingData = async () => {
       const response = await getUpcomingData();
       if (response.status === 200) {
-        setUpcomingData(response.data);
         const filteredData = filterByRankOdd(response.data, activeRank, values);
+        setUpcomingData(response.data);
         setUpcomingFilteredData(filteredData);
       } else {
         setUpcomingData([]);
@@ -113,6 +117,8 @@ const Upcoming = (props) => {
                   type="upcoming"
                   loading={loading}
                   setLoading={setLoading}
+                  openedDetail={openedDetail}
+                  setOpenedDetail={setOpenedDetail}
                 />
               ))
             ) : (

@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 
 import { getRelationData } from '../apis';
-import {
-  GET_RELATION_DATA,
-  GET_RELATION_FILTERED_DATA,
-  GET_OPENED_DETAIL,
-} from '../store/actions/types';
 import { getWinner, formatDateTime, filterData, sortByTime } from '../utils';
 import Surface from './InplayDetail/Surface';
 import Set from './InplayDetail/Set';
@@ -18,10 +12,18 @@ import PlayerDetail from './InplayDetail/PlayerDetail';
 import AverageRanks from './InplayDetail/AverageRanks';
 
 const MatchItem = (props) => {
-  const { item, type, loading, setLoading, triggerSet } = props;
-  const dispatch = useDispatch();
-  const { relationData, openedDetail } = useSelector((state) => state.tennis);
+  const {
+    item,
+    type,
+    loading,
+    setLoading,
+    triggerSet,
+    openedDetail,
+    setOpenedDetail,
+  } = props;
 
+  const [relationData, setRelationData] = useState({});
+  const [filteredRelationData, setFilteredRelationData] = useState({});
   const [detailOpened, setDetailOpened] = useState(false);
   const [isClicked, setClicked] = useState();
   const [selectedSurface, setSelectedSurface] = useState('ALL');
@@ -102,12 +104,9 @@ const MatchItem = (props) => {
         if (response.status === 200) {
           filteredData = response.data;
           sortByTime(filteredData, item.player1_id, item.player2_id);
-          dispatch({
-            type: GET_RELATION_DATA,
-            payload: filteredData,
-          });
+          setRelationData(filteredData);
         } else {
-          dispatch({ type: GET_RELATION_DATA, payload: {} });
+          setRelationData({});
         }
       } else {
         filteredData = relationData;
@@ -128,10 +127,8 @@ const MatchItem = (props) => {
         filteredData,
         filters
       );
-      dispatch({
-        type: GET_RELATION_FILTERED_DATA,
-        payload: data,
-      });
+
+      setFilteredRelationData(data);
       setLoading(false);
     };
     if (
@@ -176,10 +173,7 @@ const MatchItem = (props) => {
         p2_id: item.player2_id,
       };
     }
-    dispatch({
-      type: GET_OPENED_DETAIL,
-      payload: data,
-    });
+    setOpenedDetail(data);
     // add event_ids to localstorage for trigger1
     if (type === 'trigger1' || type === 'trigger2') {
       let clickedEvents = null;
@@ -288,7 +282,9 @@ const MatchItem = (props) => {
           </div>
           <div className="center">
             <div className="scores">
-              {(type === 'inplay' || type === 'trigger1') &&
+              {(type === 'inplay' ||
+                type === 'trigger1' ||
+                type === 'trigger2') &&
                 scores.map((score, index) => (
                   <span
                     key={index}
@@ -307,7 +303,9 @@ const MatchItem = (props) => {
             <div className="match-time">
               {type === 'history' && <span>-</span>}
               {type === 'upcoming' && <span>{datetime[1]}</span>}
-              {(type === 'inplay' || type === 'trigger1') &&
+              {(type === 'inplay' ||
+                type === 'trigger1' ||
+                type === 'trigger2') &&
                 (item['indicator'] === '0,1' ? (
                   <div className="inplay-left">
                     <span>{item['points']}</span>
@@ -319,7 +317,9 @@ const MatchItem = (props) => {
                     <span>{item['points']}</span>
                   </div>
                 ) : (
-                  <div className="inplay-right"></div>
+                  <div className="inplay-no-score">
+                    <span>0-0</span>
+                  </div>
                 ))}
             </div>
           </div>
@@ -340,7 +340,10 @@ const MatchItem = (props) => {
                     selectedRankDiff={selectedRankDiff1}
                     setSelectedRankDiff={setSelectedRankDiff1}
                   />
-                  <AverageRanks player_id={item.player1_id} />
+                  <AverageRanks
+                    player_id={item.player1_id}
+                    filteredRelationData={filteredRelationData}
+                  />
                 </div>
               </div>
               <div className="right-box">
@@ -352,7 +355,10 @@ const MatchItem = (props) => {
                     selectedRankDiff={selectedRankDiff2}
                     setSelectedRankDiff={setSelectedRankDiff2}
                   />
-                  <AverageRanks player_id={item.player2_id} />
+                  <AverageRanks
+                    player_id={item.player2_id}
+                    filteredRelationData={filteredRelationData}
+                  />
                 </div>
               </div>
               <div className="center-box">
@@ -388,6 +394,7 @@ const MatchItem = (props) => {
             <PlayerDetail
               player1_id={item.player1_id}
               player2_id={item.player2_id}
+              filteredRelationData={filteredRelationData}
             />
           </div>
         )}
@@ -402,6 +409,8 @@ MatchItem.propTypes = {
   loading: PropTypes.bool,
   setLoading: PropTypes.func,
   triggerSet: PropTypes.number,
+  openedDetail: PropTypes.object,
+  setOpenedDetail: PropTypes.func,
 };
 
 export default MatchItem;

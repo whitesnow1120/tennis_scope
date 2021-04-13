@@ -1,3 +1,10 @@
+import { SLIDER_RANGE, ROBOT_DETAILS } from '../common/Constants';
+
+/**
+ * Get winner (1: home, 2: away)
+ * @param { string } scores
+ * @returns { integer } winner
+ */
 export const getWinner = (scores) => {
   const cleandScores = scores.replaceAll(' ', '');
   const scoresArr = cleandScores.split(',');
@@ -20,6 +27,11 @@ export const getWinner = (scores) => {
   return winner > loser ? 1 : 2;
 };
 
+/**
+ * Format date (YYYY-MM-DD)
+ * @param {*} date
+ * @returns { string } date
+ */
 export const formatDate = (date) => {
   let d = date;
   if (typeof d === 'string') {
@@ -36,6 +48,11 @@ export const formatDate = (date) => {
   return [year, month, day].join('-');
 };
 
+/**
+ * Format datetime (YYYY-MM-DD HH:II)
+ * @param { integer } timestamp
+ * @returns { array } date & time
+ */
 export const formatDateTime = (timestamp) => {
   let d = new Date(timestamp * 1000);
   let month = '' + (d.getMonth() + 1);
@@ -44,9 +61,9 @@ export const formatDateTime = (timestamp) => {
 
   if (month.length < 2) month = '0' + month;
   if (day.length < 2) day = '0' + day;
+
   // Will display date in 16.03.2021 format
   const date = [day, month, year].join('.');
-
   const hours = d.getHours();
   const minutes = '0' + d.getMinutes();
 
@@ -56,6 +73,12 @@ export const formatDateTime = (timestamp) => {
   return [date, time];
 };
 
+/**
+ * Sort matches by time desc
+ * @param { array } data
+ * @param { integer } player1_id
+ * @param { integer } player2_id
+ */
 export const sortByTime = (data, player1_id, player2_id) => {
   data[player1_id].sort(function (a, b) {
     return b['time'] - a['time'];
@@ -68,6 +91,14 @@ export const sortByTime = (data, player1_id, player2_id) => {
   }); // Sort biggest first
 };
 
+/**
+ * Filter matches
+ * @param { integer } player1_id
+ * @param { integer } player2_id
+ * @param { object } relationData
+ * @param { array } filters
+ * @returns { object } filteredData
+ */
 export const filterData = (player1_id, player2_id, relationData, filters) => {
   let filteredData = { ...relationData };
   const filterSet1 = filters['set1'];
@@ -567,19 +598,26 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
 };
 
 /**
- * Filter by rank (button group)
- * @param {array} data
+ * Filter matches by Rank and Odd
+ * @param { object } data
+ * @param { string } rankType // 1: All, 2: Ranked, 3: Unranked
+ * @param { array } range // [9, 20]
+ * @param { integer } matchType // 0: for filtered data that have ss, points, and indicator, 1: for normal inplay data
+ * @returns { object } filteredData
  */
-export const filterByRankOdd = (data, type, range, match_type = 0) => {
+export const filterByRankOdd = (data, rankType, range, matchType = 0) => {
   if (data !== undefined) {
-    const filteredData = [];
+    if (rankType === '1' && range === SLIDER_RANGE) {
+      return data;
+    }
+    let filteredData = [];
     let matchData = [...data];
     matchData.map((item) => {
       let enabledRank = 0;
-      if (type === '1') {
+      if (rankType === '1') {
         // All
         enabledRank = 1;
-      } else if (type === '2') {
+      } else if (rankType === '2') {
         // One Ranked
         if (
           item['player1_ranking'] !== '-' ||
@@ -587,7 +625,7 @@ export const filterByRankOdd = (data, type, range, match_type = 0) => {
         ) {
           enabledRank = 1;
         }
-      } else if (type === '3') {
+      } else if (rankType === '3') {
         // Both Unranked
         if (
           item['player1_ranking'] === '-' &&
@@ -615,7 +653,7 @@ export const filterByRankOdd = (data, type, range, match_type = 0) => {
             ((player2_odd === null || player2_odd > 0) &&
               player2_odd <= range_2)
           ) {
-            if (match_type === 1) {
+            if (matchType === 1) {
               item['ss'] = '';
               item['points'] = '';
               item['indicator'] = '';
@@ -629,7 +667,7 @@ export const filterByRankOdd = (data, type, range, match_type = 0) => {
             (player1_odd >= range_1 && player1_odd <= range_2) ||
             (player2_odd >= range_1 && player2_odd <= range_2)
           ) {
-            if (match_type === 1) {
+            if (matchType === 1) {
               item['ss'] = '';
               item['points'] = '';
               item['indicator'] = '';
@@ -646,6 +684,12 @@ export const filterByRankOdd = (data, type, range, match_type = 0) => {
   return [];
 };
 
+/**
+ * Update ss, points, and indicator
+ * @param { array } inplayData
+ * @param { array } scores
+ * @returns { array } filteredData
+ */
 export const addInplayScores = (inplayData, scores) => {
   let filteredData = [];
   inplayData.map((item) => {
@@ -662,12 +706,24 @@ export const addInplayScores = (inplayData, scores) => {
   return filteredData;
 };
 
+/**
+ * Get specific match
+ * @param { integer } event_id
+ * @param { array } data
+ * @returns { object } current event
+ */
 export const getCurrentInplayScores = (event_id, data) => {
   const currentEvent = data.filter((item) => item['event_id'] === event_id);
   return currentEvent[0];
 };
 
-// trigger1
+/**
+ * Filter matches for trigger1 rule
+ * @param { object } triggerData
+ * @param { object } trigger1DataBySet
+ * @param { integer } gameDiff
+ * @returns { object } filtered trigger1 data
+ */
 export const filterTrigger1 = (
   triggerData,
   trigger1DataBySet,
@@ -733,33 +789,42 @@ export const filterTrigger1 = (
         ) {
           if (setLength === 1) {
             let itemExist = false;
-            filteredData1.map((f) => {
-              if (f['event_id'] === item['event_id']) {
+            for (let i = 0; i < filteredData1.length; i++) {
+              if (filteredData1[i]['event_id'] === item['event_id']) {
                 itemExist = true;
+                filteredData1[i]['ss'] = item['ss'];
+                filteredData1[i]['points'] = item['points'];
+                filteredData1[i]['indicator'] = item['indicator'];
               }
-            });
+            }
             // add new match
             if (!itemExist) {
               filteredData1.push(item);
             }
           } else if (setLength === 2) {
             let itemExist = false;
-            filteredData2.map((f) => {
-              if (f['event_id'] === item['event_id']) {
+            for (let i = 0; i < filteredData2.length; i++) {
+              if (filteredData2[i]['event_id'] === item['event_id']) {
                 itemExist = true;
+                filteredData2[i]['ss'] = item['ss'];
+                filteredData2[i]['points'] = item['points'];
+                filteredData2[i]['indicator'] = item['indicator'];
               }
-            });
+            }
             // add new match
             if (!itemExist) {
               filteredData2.push(item);
             }
           } else if (setLength === 3) {
             let itemExist = false;
-            filteredData3.map((f) => {
-              if (f['event_id'] === item['event_id']) {
+            for (let i = 0; i < filteredData3.length; i++) {
+              if (filteredData3[i]['event_id'] === item['event_id']) {
                 itemExist = true;
+                filteredData3[i]['ss'] = item['ss'];
+                filteredData3[i]['points'] = item['points'];
+                filteredData3[i]['indicator'] = item['indicator'];
               }
-            });
+            }
             // add new match
             if (!itemExist) {
               filteredData3.push(item);
@@ -776,7 +841,12 @@ export const filterTrigger1 = (
   };
 };
 
-// check value in one array is in other array or not
+/**
+ * check value in one array is in other array or not
+ * @param { array } array1
+ * @param { array } array2
+ * @returns { boolean }
+ */
 export const itemNotExist = (array1, array2) => {
   for (let i = 0; i < array1.length; i++) {
     if (!array2.includes(array1[i]['event_id'])) {
@@ -784,4 +854,48 @@ export const itemNotExist = (array1, array2) => {
     }
   }
   return false;
+};
+
+/**
+ * Calculate percent for the robots
+ * @param { object } robots
+ */
+export const calculateRobotPercent = (robots) => {
+  let percents = [];
+  let i = 0;
+  robots.map((robot) => {
+    let right = 0;
+    let wrong = 0;
+    let percent = 0;
+    robot.map((item) => {
+      if (item['expected_winner'] === item['real_winner']) {
+        right++;
+      } else {
+        wrong++;
+      }
+    });
+
+    if (right + wrong === 0) {
+      percent = 0;
+    } else {
+      percent = Math.round((right / (right + wrong)) * 100);
+    }
+    percents.push({
+      right: right,
+      wrong: wrong,
+      total: right + wrong,
+      percent: percent,
+      name: 'Robot ' + (i + 1),
+      detail: ROBOT_DETAILS[i],
+    });
+    i++;
+  });
+
+  const rules = [
+    percents.slice(0, 10),
+    percents.slice(10, 20),
+    percents.slice(20, 30),
+    percents.slice(30, 40),
+  ];
+  return rules;
 };

@@ -64,3 +64,12 @@ export const getRelationData = async (params) => {
     return 0;
   }
 };
+
+export const getRobotsData = async () => {
+  try {
+    return await api.get('/robots');
+  } catch (err) {
+    console.log('error getting the inplay');
+    return 0;
+  }
+};

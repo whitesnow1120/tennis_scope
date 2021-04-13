@@ -520,6 +520,20 @@ p {
   margin-top: 11px;
 }
 
+.robot-rule {
+  width: 7%;
+}
+
+.robot-rule span {
+  color: #7c859c;
+}
+
+.inplay-no-score {
+  display: inline-flex;
+  padding-top: 8px;
+  margin-right: 5px;
+}
+
 .inplay-left {
   display: inline-flex;
   padding-left: 9px;
@@ -889,10 +903,6 @@ p {
   padding-right: 15px;
 }
 
-.match-item .set-percent span {
-  margin-right: 5px;
-}
-
 .match-item .set-percent div:nth-child(1) span,
 .match-item .set-percent div:nth-child(3) span {
   font-weight: 500;
@@ -936,14 +946,13 @@ p {
 .match-item .lose-win,
 .match-item .lose-lose {
   display: flex;
-  justify-content: space-between;
 }
 
 .match-item .win-win div,
 .match-item .win-lose div,
 .match-item .lose-win div,
 .match-item .lose-lose div {
-  width: 30%;
+  width: 28%;
   text-align: center;
 }
 
@@ -1173,6 +1182,25 @@ p {
 .match-time {
   color: #474d5c;
 }
+
+.robot-container {
+  display: grid;
+}
+
+.robot-container .robot-header,
+.robot-container .robot-footer {
+  margin-top: 10px;
+}
+
+.robot-container .robot-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.robot-container .robot-header .robot-left span {
+  font-weight: bold;
+}
+
 .account-setting {
   width: 50%;
   margin: 0 auto;

@@ -24,6 +24,10 @@ Route::get('inplay', 'App\Http\Controllers\TennisController@inplay');
 Route::post('inplay-scores', 'App\Http\Controllers\TennisController@inplayScoreUpdate');
 Route::get('relation', 'App\Http\Controllers\TennisController@relation');
 
+// robots
+Route::get('robots', 'App\Http\Controllers\TennisController@robots');
+
+
 Route::post('user-signup', 'App\Http\Controllers\UserController@userSignUp');
 Route::post('user-login', 'App\Http\Controllers\UserController@userLogin');
 Route::get('user/{username}', 'App\Http\Controllers\UserController@userDetail');

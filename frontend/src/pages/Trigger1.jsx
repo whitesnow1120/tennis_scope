@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+// import { useDispatch } from 'react-redux';
 import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
 import PropTypes from 'prop-types';
 
-import { GET_OPENED_DETAIL } from '../store/actions/types';
+// import { GET_OPENED_DETAIL } from '../store/actions/types';
 import { filterByRankOdd, addInplayScores, filterTrigger1 } from '../utils';
 import { getInplayData } from '../apis';
 import MatchItem from '../components/MatchItem';
@@ -19,8 +19,12 @@ import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
 
 const Trigger1 = (props) => {
-  const { inplayScoreData } = props;
-  const dispatch = useDispatch();
+  const { inplayScoreData, filterChanged, setFilterChanged } = props;
+  // const dispatch = useDispatch();
+  const [openedDetail, setOpenedDetail] = useState({
+    p1_id: '',
+    p2_id: '',
+  });
   const rankFilter = localStorage.getItem('rankFilter');
   const [activeRank, setActiveRank] = useState(
     rankFilter === null ? '1' : rankFilter
@@ -30,6 +34,12 @@ const Trigger1 = (props) => {
     players_detail: [],
   });
   const [trigger1DataBySet, setTrigger1DataBySet] = useState({
+    set1: [],
+    set2: [],
+    set3: [],
+  });
+  // filtered by rank and odd
+  const [trigger1FilteredDataBySet, setTrigger1FilteredDataBySet] = useState({
     set1: [],
     set2: [],
     set3: [],
@@ -51,10 +61,7 @@ const Trigger1 = (props) => {
   `;
 
   const handleSliderChange = (value) => {
-    dispatch({
-      type: GET_OPENED_DETAIL,
-      payload: {},
-    });
+    setOpenedDetail({});
     setValues(value);
     setSliderValue(sliderValue === '0' ? '1' : '0');
     localStorage.setItem('sliderChanged', JSON.stringify(value));
@@ -119,6 +126,8 @@ const Trigger1 = (props) => {
         'clickedEventsTrigger1',
         JSON.stringify(clickedEvents)
       );
+
+      /* --- store current trigger event ids in localstorage --- start --- */
       const set1Ids = filteredTrigger1Data['set1'].map((f) => {
         return f['event_id'];
       });
@@ -134,7 +143,34 @@ const Trigger1 = (props) => {
         set3: set3Ids,
       };
       localStorage.setItem('trigger1', JSON.stringify(eventIds));
+      /* --- store current trigger event ids in localstorage --- end --- */
+
+      // set normal trigger1 data
       setTrigger1DataBySet(filteredTrigger1Data);
+
+      /* --- set filtered trigger data by Rankd and odd --- start --- */
+      let filteredTriggerByRankOdd = {
+        set1: [],
+        set2: [],
+        set3: [],
+      };
+      filteredTriggerByRankOdd['set1'] = filterByRankOdd(
+        filteredTrigger1Data['set1'],
+        activeRank,
+        values
+      );
+      filteredTriggerByRankOdd['set2'] = filterByRankOdd(
+        filteredTrigger1Data['set2'],
+        activeRank,
+        values
+      );
+      filteredTriggerByRankOdd['set3'] = filterByRankOdd(
+        filteredTrigger1Data['set3'],
+        activeRank,
+        values
+      );
+      setTrigger1FilteredDataBySet(filteredTriggerByRankOdd);
+      /* --- set filtered trigger data by Rankd and odd --- end --- */
     };
 
     if (
@@ -145,6 +181,10 @@ const Trigger1 = (props) => {
       loadTrigger1ScoreData();
     }
   }, [trigger1Data, activeRank, sliderValue, inplayScoreData]);
+
+  useEffect(() => {
+    setFilterChanged(!filterChanged);
+  }, [activeRank, sliderValue]);
 
   return (
     <>
@@ -182,8 +222,8 @@ const Trigger1 = (props) => {
               </div>
               <div className="trigger-border"></div>
             </div>
-            {trigger1DataBySet['set1'].length > 0 ? (
-              trigger1DataBySet['set1'].map((item) => (
+            {trigger1FilteredDataBySet['set1'].length > 0 ? (
+              trigger1FilteredDataBySet['set1'].map((item) => (
                 <MatchItem
                   key={item.id}
                   item={item}
@@ -191,6 +231,8 @@ const Trigger1 = (props) => {
                   triggerSet={1}
                   loading={loading}
                   setLoading={setLoading}
+                  openedDetail={openedDetail}
+                  setOpenedDetail={setOpenedDetail}
                 />
               ))
             ) : (
@@ -204,8 +246,8 @@ const Trigger1 = (props) => {
               </div>
               <div className="trigger-border"></div>
             </div>
-            {trigger1DataBySet['set2'].length > 0 ? (
-              trigger1DataBySet['set2'].map((item) => (
+            {trigger1FilteredDataBySet['set2'].length > 0 ? (
+              trigger1FilteredDataBySet['set2'].map((item) => (
                 <MatchItem
                   key={item.id}
                   item={item}
@@ -213,6 +255,8 @@ const Trigger1 = (props) => {
                   triggerSet={2}
                   loading={loading}
                   setLoading={setLoading}
+                  openedDetail={openedDetail}
+                  setOpenedDetail={setOpenedDetail}
                 />
               ))
             ) : (
@@ -226,8 +270,8 @@ const Trigger1 = (props) => {
               </div>
               <div className="trigger-border"></div>
             </div>
-            {trigger1DataBySet['set3'].length > 0 ? (
-              trigger1DataBySet['set3'].map((item) => (
+            {trigger1FilteredDataBySet['set3'].length > 0 ? (
+              trigger1FilteredDataBySet['set3'].map((item) => (
                 <MatchItem
                   key={item.id}
                   item={item}
@@ -235,6 +279,8 @@ const Trigger1 = (props) => {
                   triggerSet={3}
                   loading={loading}
                   setLoading={setLoading}
+                  openedDetail={openedDetail}
+                  setOpenedDetail={setOpenedDetail}
                 />
               ))
             ) : (
@@ -249,6 +295,8 @@ const Trigger1 = (props) => {
 
 Trigger1.propTypes = {
   inplayScoreData: PropTypes.array,
+  filterChanged: PropTypes.bool,
+  setFilterChanged: PropTypes.func,
 };
 
 export default Trigger1;

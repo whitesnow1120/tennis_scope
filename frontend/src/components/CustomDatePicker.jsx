@@ -1,14 +1,10 @@
 import React, { useState, forwardRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import PropTypes from 'prop-types';
 
-import { GET_HISTORY_DATE } from '../store/actions/types';
-
-const CustomDatePicker = () => {
-  const dispatch = useDispatch();
-  const { historyDate } = useSelector((state) => state.tennis);
+const CustomDatePicker = (props) => {
+  const { historyDate, setHistoryDate } = props;
   const [isOpened, setIsOpened] = useState(false);
 
   let selectedDate = historyDate;
@@ -17,7 +13,7 @@ const CustomDatePicker = () => {
   }
 
   const handleDateSelect = (date) => {
-    dispatch({ type: GET_HISTORY_DATE, payload: date.toString() });
+    setHistoryDate(date.toString());
   };
 
   const handleCalendarOpen = () => {
@@ -62,6 +58,8 @@ const CustomDatePicker = () => {
 CustomDatePicker.propTypes = {
   value: PropTypes.func,
   onClick: PropTypes.func,
+  historyDate: PropTypes.any,
+  setHistoryDate: PropTypes.func,
 };
 
 export default CustomDatePicker;

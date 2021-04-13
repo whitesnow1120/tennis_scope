@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
 import { Helmet } from 'react-helmet';
 import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
@@ -20,7 +19,11 @@ import CustomSlider from '../components/CustomSlider/slider';
 
 const History = (props) => {
   const { filterChanged, setFilterChanged } = props;
-  const { historyDate } = useSelector((state) => state.tennis);
+  const [openedDetail, setOpenedDetail] = useState({
+    p1_id: '',
+    p2_id: '',
+  });
+  const [historyDate, setHistoryDate] = useState(new Date());
   const rankFilter = localStorage.getItem('rankFilter');
   const [activeRank, setActiveRank] = useState(
     rankFilter === null ? '1' : rankFilter
@@ -56,8 +59,8 @@ const History = (props) => {
     const loadHistoryData = async () => {
       const response = await getHistoryData(historyDate);
       if (response.status === 200) {
-        setHistoryData(response.data);
         const filteredData = filterByRankOdd(response.data, activeRank, values);
+        setHistoryData(response.data);
         setHistoryFilteredData(filteredData);
       } else {
         setHistoryData([]);
@@ -65,7 +68,7 @@ const History = (props) => {
       // Call the async function again
       setTimeout(function () {
         loadHistoryData();
-      }, 1000 * 60 * 10);
+      }, 1000 * 60 * 5);
     };
 
     loadHistoryData();
@@ -96,7 +99,10 @@ const History = (props) => {
         <div className="container-fluid">
           <div className="history-header">
             <div className="datepicker-container">
-              <CustomDatePicker />
+              <CustomDatePicker
+                setHistoryDate={setHistoryDate}
+                historyDate={historyDate}
+              />
             </div>
             <RankButtonGroup
               activeRank={activeRank}
@@ -119,6 +125,8 @@ const History = (props) => {
                   type="history"
                   loading={loading}
                   setLoading={setLoading}
+                  openedDetail={openedDetail}
+                  setOpenedDetail={setOpenedDetail}
                 />
               ))
             ) : (
