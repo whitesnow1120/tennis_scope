@@ -6,7 +6,7 @@ import BounceLoader from 'react-spinners/BounceLoader';
 import PropTypes from 'prop-types';
 
 // import { GET_OPENED_DETAIL } from '../store/actions/types';
-import { filterByRankOdd, addInplayScores, filterTrigger1 } from '../utils';
+import { filterByRankOdd, addInplayScores, filterTrigger1, openedDetailExistInNewMathes } from '../utils';
 import { getInplayData } from '../apis';
 import MatchItem from '../components/MatchItem';
 import {
@@ -19,7 +19,12 @@ import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
 
 const Trigger1 = (props) => {
-  const { inplayScoreData, filterChanged, setFilterChanged } = props;
+  const {
+    inplayScoreData,
+    filterChanged,
+    setFilterChanged,
+    trigger1DataBySet,
+  } = props;
   // const dispatch = useDispatch();
   const [openedDetail, setOpenedDetail] = useState({
     p1_id: '',
@@ -32,11 +37,6 @@ const Trigger1 = (props) => {
   const [trigger1Data, setTrigger1Data] = useState({
     inplay_detail: [],
     players_detail: [],
-  });
-  const [trigger1DataBySet, setTrigger1DataBySet] = useState({
-    set1: [],
-    set2: [],
-    set3: [],
   });
   // filtered by rank and odd
   const [trigger1FilteredDataBySet, setTrigger1FilteredDataBySet] = useState({
@@ -61,7 +61,10 @@ const Trigger1 = (props) => {
   `;
 
   const handleSliderChange = (value) => {
-    setOpenedDetail({});
+    setOpenedDetail({
+      p1_id: '',
+      p2_id: '',
+    });
     setValues(value);
     setSliderValue(sliderValue === '0' ? '1' : '0');
     localStorage.setItem('sliderChanged', JSON.stringify(value));
@@ -77,7 +80,10 @@ const Trigger1 = (props) => {
       }
       // Call the async function again
       setTimeout(function () {
-        loadTrigger1Data();
+        const pathName = window.location.pathname;
+        if (pathName.includes('trigger1')) {
+          loadTrigger1Data();
+        }
       }, 1000 * 60 * 5);
     };
 
@@ -145,9 +151,6 @@ const Trigger1 = (props) => {
       localStorage.setItem('trigger1', JSON.stringify(eventIds));
       /* --- store current trigger event ids in localstorage --- end --- */
 
-      // set normal trigger1 data
-      setTrigger1DataBySet(filteredTrigger1Data);
-
       /* --- set filtered trigger data by Rankd and odd --- start --- */
       let filteredTriggerByRankOdd = {
         set1: [],
@@ -169,6 +172,25 @@ const Trigger1 = (props) => {
         activeRank,
         values
       );
+      if (
+        !openedDetailExistInNewMathes(
+          filteredTriggerByRankOdd['set1'],
+          openedDetail
+        ) &&
+        !openedDetailExistInNewMathes(
+          filteredTriggerByRankOdd['set2'],
+          openedDetail
+        ) &&
+        !openedDetailExistInNewMathes(
+          filteredTriggerByRankOdd['set3'],
+          openedDetail
+        )
+      ) {
+        setOpenedDetail({
+          p1_id: '',
+          p2_id: '',
+        });
+      }
       setTrigger1FilteredDataBySet(filteredTriggerByRankOdd);
       /* --- set filtered trigger data by Rankd and odd --- end --- */
     };
@@ -297,6 +319,7 @@ Trigger1.propTypes = {
   inplayScoreData: PropTypes.array,
   filterChanged: PropTypes.bool,
   setFilterChanged: PropTypes.func,
+  trigger1DataBySet: PropTypes.object,
 };
 
 export default Trigger1;

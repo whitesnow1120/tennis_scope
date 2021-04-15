@@ -6,7 +6,11 @@ import BounceLoader from 'react-spinners/BounceLoader';
 import PropTypes from 'prop-types';
 
 // import { GET_OPENED_DETAIL } from '../store/actions/types';
-import { filterByRankOdd, addInplayScores } from '../utils';
+import {
+  filterByRankOdd,
+  addInplayScores,
+  openedDetailExistInNewMathes,
+} from '../utils';
 import { getInplayData } from '../apis';
 import MatchItem from '../components/MatchItem';
 import {
@@ -17,9 +21,16 @@ import {
 } from '../common/Constants';
 import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
+import CustomCheckbox from '../components/CustomCheckbox';
 
 const Inplay = (props) => {
-  const { filterChanged, setFilterChanged, inplayScoreData } = props;
+  const {
+    filterChanged,
+    setFilterChanged,
+    inplayScoreData,
+    roboPicks,
+    setRoboPicks,
+  } = props;
   // const dispatch = useDispatch();
   const rankFilter = localStorage.getItem('rankFilter');
   const [openedDetail, setOpenedDetail] = useState({
@@ -31,6 +42,7 @@ const Inplay = (props) => {
   );
   const [inplayData, setInplayData] = useState([]);
   const [inplayFilteredData, setInplayFilteredData] = useState([]);
+  const [winners, setWinners] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const sliderChanged = JSON.parse(localStorage.getItem('sliderChanged'));
@@ -47,7 +59,10 @@ const Inplay = (props) => {
   `;
 
   const handleSliderChange = (value) => {
-    setOpenedDetail({});
+    setOpenedDetail({
+      p1_id: '',
+      p2_id: '',
+    });
     setValues(value);
     setSliderValue(sliderValue === '0' ? '1' : '0');
     localStorage.setItem('sliderChanged', JSON.stringify(value));
@@ -58,6 +73,7 @@ const Inplay = (props) => {
     const loadInplayData = async () => {
       const response = await getInplayData();
       if (response.status === 200) {
+        setWinners(response.data.winners);
         const data = response.data.inplay_detail;
         const filteredData = filterByRankOdd(data, activeRank, values, 1);
         setInplayData(data);
@@ -68,7 +84,7 @@ const Inplay = (props) => {
       // Call the async function again
       setTimeout(function () {
         const pathName = window.location.pathname;
-        if (pathName.includes('/trigger')) {
+        if (pathName.includes('/inplay')) {
           loadInplayData();
         }
       }, 1000 * 60 * 5); // update every 5 minutes
@@ -91,6 +107,12 @@ const Inplay = (props) => {
         filteredDataByRankOdd,
         inplayScoreData
       );
+      if (!openedDetailExistInNewMathes(filteredData, openedDetail)) {
+        setOpenedDetail({
+          p1_id: '',
+          p2_id: '',
+        });
+      }
       setInplayFilteredData(filteredData);
     };
 
@@ -131,18 +153,25 @@ const Inplay = (props) => {
               domain={domain}
               step={SLIDER_STEP}
             />
+            <CustomCheckbox
+              label="Robopicks"
+              isChecked={roboPicks}
+              setRoboPicks={setRoboPicks}
+            />
           </div>
           <div className="row mt-4">
             {inplayFilteredData.length > 0 ? (
-              inplayFilteredData.map((item, index) => (
+              inplayFilteredData.map((item) => (
                 <MatchItem
-                  key={index}
+                  key={item.id}
                   item={item}
                   type="inplay"
                   loading={loading}
                   setLoading={setLoading}
                   setOpenedDetail={setOpenedDetail}
                   openedDetail={openedDetail}
+                  winners={winners}
+                  roboPicks={roboPicks}
                 />
               ))
             ) : (
@@ -159,6 +188,8 @@ Inplay.propTypes = {
   filterChanged: PropTypes.bool,
   setFilterChanged: PropTypes.func,
   inplayScoreData: PropTypes.array,
+  roboPicks: PropTypes.bool,
+  setRoboPicks: PropTypes.func,
 };
 
 export default Inplay;

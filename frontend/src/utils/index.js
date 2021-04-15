@@ -892,10 +892,50 @@ export const calculateRobotPercent = (robots) => {
   });
 
   const rules = [
-    percents.slice(0, 10),
-    percents.slice(10, 20),
-    percents.slice(20, 30),
-    percents.slice(30, 40),
+    // percents.slice(0, 10),
+    // percents.slice(10, 20),
+    // percents.slice(20, 30),
+    // percents.slice(30, 40),
+    // percents.slice(40, 42),
+    // percents.slice(42, 44),
+    // percents.slice(44, 46),
+    // percents.slice(46, 48),
+    // percents.slice(48, 50),
+    percents.slice(0, 2),
   ];
   return rules;
+};
+
+/**
+ * Check opened Detail is exist in the new matches
+ * @param { array } newMatches
+ * @param { object } detail
+ * @returns boolean
+ */
+export const openedDetailExistInNewMathes = (newMatches, detail) => {
+  for (let i = 0; i < newMatches.length; i++) {
+    const player1_id = newMatches[i]['player1_id'];
+    const player2_id = newMatches[i]['player2_id'];
+    if (detail['p1_id'] === player1_id && detail['p2_id'] === player2_id) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Check winner
+ * @param { object } match
+ * @param { array } winners
+ * return number
+ */
+export const checkWinner = (match, winners) => {
+  for (let i = 0; i < winners.length; i++) {
+    if (winners[i]['event_id'] === match['event_id']) {
+      return winners[i];
+    }
+  }
+  return {
+    type: -1,
+  };
 };

@@ -31,6 +31,17 @@ const AppRouter = () => {
   const [activeMenu, setActiveMenu] = useState(0);
   const [filterChanged, setFilterChanged] = useState(false);
   const [inplayScoreData, setInplayScoreData] = useState([]);
+  const [trigger1DataBySet, setTrigger1DataBySet] = useState({
+    set1: [],
+    set2: [],
+    set3: [],
+  });
+  const [trigger2DataBySet, setTrigger2DataBySet] = useState({
+    set1: [],
+    set2: [],
+    set3: [],
+  });
+  const [roboPicks, setRoboPicks] = useState(false);
 
   return (
     <Provider store={store}>
@@ -41,6 +52,10 @@ const AppRouter = () => {
           setActiveMenu={setActiveMenu}
           filterChanged={filterChanged}
           setInplayScoreData={setInplayScoreData}
+          trigger1DataBySet={trigger1DataBySet}
+          setTrigger1DataBySet={setTrigger1DataBySet}
+          trigger2DataBySet={trigger2DataBySet}
+          setTrigger2DataBySet={setTrigger2DataBySet}
         />
         <Switch>
           <Route path="/" exact component={SignIn} />
@@ -49,18 +64,24 @@ const AppRouter = () => {
               filterChanged={filterChanged}
               setFilterChanged={setFilterChanged}
               inplayScoreData={inplayScoreData}
+              roboPicks={roboPicks}
+              setRoboPicks={setRoboPicks}
             />
           </Route>
           <Route path="/upcoming" exact>
             <Upcoming
               filterChanged={filterChanged}
               setFilterChanged={setFilterChanged}
+              roboPicks={roboPicks}
+              setRoboPicks={setRoboPicks}
             />
           </Route>
           <Route path="/history" exact>
             <History
               filterChanged={filterChanged}
               setFilterChanged={setFilterChanged}
+              roboPicks={roboPicks}
+              setRoboPicks={setRoboPicks}
             />
           </Route>
           <Route path="/trigger1" exact>
@@ -68,6 +89,7 @@ const AppRouter = () => {
               filterChanged={filterChanged}
               setFilterChanged={setFilterChanged}
               inplayScoreData={inplayScoreData}
+              trigger1DataBySet={trigger1DataBySet}
             />
           </Route>
           <Route path="/trigger2" exact>
@@ -75,6 +97,7 @@ const AppRouter = () => {
               filterChanged={filterChanged}
               setFilterChanged={setFilterChanged}
               inplayScoreData={inplayScoreData}
+              trigger2DataBySet={trigger2DataBySet}
             />
           </Route>
           <Route path="/robots" exact>

@@ -593,11 +593,20 @@ class Helper {
 				}
 
 				if (!$bucket_player_table_exist || !$bucket_opponents_table_exist) {
-					$player_ids = [$player1_id, $player2_id];
-					$relation_data = Helper::getRelationMatches($player_ids, $history_tables, $players);
+					$current_player_ids = [$player1_id, $player2_id];
+					$relation_data = Helper::getRelationMatches($current_player_ids, $history_tables, $players);
 					if (!$bucket_player_table_exist) {
 						// insert t_players_ table
 						$players_object = array_merge($relation_data[0][0], $relation_data[0][1]);
+						// foreach ($players_object as $player_object) {
+						// 	DB::table($bucket_players_table)
+						// 		->updateOrInsert(
+						// 			[
+						// 				"event_id" => $player_object['event_id'],
+						// 			],
+						// 			$player_object
+						// 		);
+						// }
 						$player_insert_data = collect($players_object);
 						$chunks = $player_insert_data->chunk(500);
 						foreach ($chunks as $chunk) {
@@ -614,6 +623,17 @@ class Helper {
 							DB::table($bucket_opponents_table)
 									->insert($chunk->toArray());
 						}
+						// foreach ($relation_data[1] as $opponent_object) {
+						// 	DB::table($bucket_opponents_table)
+						// 		->updateOrInsert(
+						// 			[
+						// 				"event_id" => $opponent_object['event_id'],
+						// 				"o_id" => $opponent_object['o_id'],
+						// 				"oo_id" => $opponent_object['oo_id'],
+						// 			],
+						// 			$opponent_object
+						// 		);
+						// }
 					}
 				}
 			}
@@ -638,7 +658,6 @@ class Helper {
 		$total_player_cnt = count($player_ids);
 
 		foreach ($player_ids as $player_id) {
-			$start_time = microtime(true);
 			$matches_array = array();
 			$event_ids = array();
 			$players_object[$player_cnt] = array();
@@ -739,9 +758,6 @@ class Helper {
 				}
 			}
 			$player_cnt ++;
-			$execution_time = microtime(true) - $start_time;
-			$log = $execution_time . " ===> Ended: " . $total_player_cnt . " / " . $player_cnt;
-			Helper::printLog($log);
 		}
 		return [$players_object, $opponents_objects];
     }
@@ -1260,6 +1276,394 @@ class Helper {
 		Helper::printLog($log);
 	}
 
+	public static function getWinners($matches, $matchType=0) {
+		/**
+		 * Robot 41: BRW + GAH + ODD + L10
+		 * Robot 42: BRW + GAH + ODD + L20
+		 * Robot 43: BRW + GAH + RANK + L10
+		 * Robot 44: BRW + GAH + RANK + L20
+		 */
+		$players = DB::table("t_players")->get();
+		$history_tables = DB::table("pg_catalog.pg_tables")
+								->where("schemaname", "public")
+								->where("tablename", "like", "t_matches_%")
+								->get();
+
+		$filteredMatches = Helper::filterMatchesByRankOdd($matches);
+		$winners = array();
+		$event_ids = array();
+		foreach ($filteredMatches as $match) {
+			$player1_id = $match["player1_id"];
+			$player2_id = $match["player2_id"];
+			$player_detail = [
+				"player1_odd" => $match["player1_odd"],
+				"player2_odd" => $match["player2_odd"],
+				"player1_ranking" => $match["player1_ranking"],
+				"player2_ranking" => $match["player2_ranking"],
+			];
+			
+			if ($matchType == 0) { // history so we have to pre-calculate
+				$player_ids = [$player1_id, $player2_id];
+				$relation_data = Helper::getRelationMatches($player_ids, $history_tables, $players, 0);
+				
+				$player1_object = $relation_data[0][0];
+				usort($player1_object, function($a, $b) {
+					return $a['time'] - $b['time'];
+				});
+				$player1_object = Helper::getUniqueMatchesByEventId($player1_object);
+				$player1_objects_l_10 = array_slice($player1_object, 0, 10);
+				$player1_object = Helper::getUniqueMatchesByEventId($player1_object);
+				$player1_objects_l_20 = array_slice($player1_object, 0, 20);
+
+				$player2_object = $relation_data[0][1];
+				usort($player2_object, function($a, $b) {
+					return $a['time'] - $b['time'];
+				});
+				$player2_object = Helper::getUniqueMatchesByEventId($player2_object);
+				$player2_objects_l_10 = array_slice($player2_object, 0, 10);
+				$player2_object = Helper::getUniqueMatchesByEventId($player2_object);
+				$player2_objects_l_20 = array_slice($player2_object, 0, 20);
+			} else { // inplay or upcoming so we can use pre-calculation table directly
+				$table_name = "t_bucket_players_" . $player1_id . "_" . $player2_id;
+				// for robot 41 and 43
+				$player1_objects_l_10 = DB::table($table_name)
+											->select("event_id", "p_brw", "p_gah")
+											->where("p_id", $player1_id)
+											->orderByDesc("time")
+											->get();
+				$player2_objects_l_10 = DB::table($table_name)
+											->select("event_id", "p_brw", "p_gah")
+											->where("p_id", $player2_id)
+											->orderByDesc("time")
+											->get();
+				// for robot 42 and 44
+				$player1_objects_l_20 = DB::table($table_name)
+											->select("event_id", "p_brw", "p_gah")
+											->where("p_id", $player1_id)
+											->orderByDesc("time")
+											->get();
+				$player2_objects_l_20 = DB::table($table_name)
+											->select("event_id", "p_brw", "p_gah")
+											->where("p_id", $player2_id)
+											->orderByDesc("time")
+											->get();
+				$player1_objects_l_10 = Helper::getUniqueMatchesByEventId($player1_objects_l_10, 10);
+				$player1_objects_l_20 = Helper::getUniqueMatchesByEventId($player1_objects_l_20, 20);
+				$player2_objects_l_10 = Helper::getUniqueMatchesByEventId($player2_objects_l_10, 10);
+				$player2_objects_l_20 = Helper::getUniqueMatchesByEventId($player2_objects_l_20, 20);
+			}
+
+			if ($player_detail["player1_odd"] != NULL && $player_detail["player2_odd"] != NULL && $player_detail["player1_ranking"] != "-" && $player_detail["player2_ranking"] != "-") {
+				// for robot 44 (BRW + GAH + RANK + L20)
+				$winner_44 = Helper::robot4344($player1_objects_l_20, $player2_objects_l_20, 20, $player_detail);
+				if ($winner_44 != 0) {
+					$detail = [
+						'event_id' => $match['event_id'],
+						'winner'=> $winner_44,
+						'type' => 44,
+					];
+					if (!in_array($match['event_id'], $event_ids)) {
+						array_push($winners, $detail);
+						array_push($event_ids, $match['event_id']);
+					}
+				}
+				// for robot 43 (BRW + GAH + RANK + L10)
+				$winner_43 = Helper::robot4344($player1_objects_l_10, $player2_objects_l_10, 10, $player_detail);
+				if ($winner_43 != 0) {
+					$detail = [
+						'event_id' => $match['event_id'],
+						'winner'=> $winner_43,
+						'type' => 43,
+					];
+					if (!in_array($match['event_id'], $event_ids)) {
+						array_push($winners, $detail);
+						array_push($event_ids, $match['event_id']);
+					}
+				}
+	
+				// // for robot 42 (BRW + GAH + ODD + L20)
+				// $winner_42 = Helper::robot4142($player1_objects_l_20, $player2_objects_l_20, 20, $player_detail);
+				// if ($winner_42 != 0) {
+				// 	$detail = [
+				// 		'event_id' => $match['event_id'],
+				// 		'winner'=> $winner_42,
+				// 		'type' => 42,
+				// 	];
+				// 	if (!in_array($match['event_id'], $event_ids)) {
+				// 		array_push($winners, $detail);
+				// 		array_push($event_ids, $match['event_id']);
+				// 	}
+				// }
+				// // for robot 41 (BRW + GAH + ODD + L10)
+				// $winner_41 = Helper::robot4142($player1_objects_l_10, $player2_objects_l_10, 10, $player_detail);
+				// if ($winner_41 != 0) {
+				// 	$detail = [
+				// 		'event_id' => $match['event_id'],
+				// 		'winner'=> $winner_41,
+				// 		'type' => 41,
+				// 	];
+				// 	if (!in_array($match['event_id'], $event_ids)) {
+				// 		array_push($winners, $detail);
+				// 		array_push($event_ids, $match['event_id']);
+				// 	}
+				// }
+			}
+
+			// // for robot 31 (BRW + GAH + unranked + L10)
+			// if ($player_detail["player1_ranking"] == "-" && $player_detail["player2_ranking"] == "-") {
+			// 	$winner_31 = Helper::robot31($player1_objects_l_10, $player2_objects_l_10, 10);
+			// 	$detail = [
+			// 		'event_id' => $match['event_id'],
+			// 		'winner'=> $winner_31,
+			// 		'type' => 31,
+			// 	];
+			// 	if (!in_array($match['event_id'], $event_ids)) {
+			// 		array_push($winners, $detail);
+			// 		array_push($event_ids, $match['event_id']);
+			// 	}
+			// }
+		}
+		return $winners;
+	}
+
+	public static function getUniqueMatchesByEventId($events, $limit=-1) {
+		$event_ids = array();
+		$newEvents = array();
+		$i = 0;
+		foreach ($events as $event) {
+			if (gettype($event) == "object") {
+				$event_id = $event->event_id;
+			} else {
+				$event_id = $event["event_id"];
+			}
+			if (!in_array($event_id, $event_ids)) {
+				array_push($newEvents, $event);
+				array_push($event_ids, $event_id);
+				if ($limit != -1) {
+					$i ++;
+					if ($i == $limit) {
+						break;
+					}
+				}
+			}
+		}
+		return $newEvents;
+	}
+
+	public static function getUniqueMatchesByODetail($events, $limit=-1) {
+		$event_ids = array();
+		$o_ids = array();
+		$oo_ids = array();
+		$newEvents = array();
+		$i = 0;
+		foreach ($events as $event) {
+			$insert = false;
+			$index = array_search($event->event_id, $event_ids);
+			if ($index == false) {
+				$insert = true;
+			} else {
+				if ($o_ids[$index] == $event->o_id && $oo_ids[$index] == $event->oo_id) {
+					$insert = false;
+				} else {
+					$insert = true;
+				}
+			}
+			if ($insert) {
+				array_push($newEvents, $event);
+				array_push($event_ids, $event->event_id);
+				array_push($o_ids, $event->o_id);
+				array_push($oo_ids, $event->oo_id);
+				if ($limit != -1) {
+					$i ++;
+					if ($i == $limit) {
+						break;
+					}
+				}
+			}
+		}
+		return $newEvents;
+	}
+
+	public static function robot4142($player1_events, $player2_events, $limit, $player_detail) {
+		$player1_odd = $player_detail["player1_odd"];
+		$player2_odd = $player_detail["player2_odd"];
+		$player1_gah = 0;
+		$player1_brw = 0;
+		$i = 0;
+		foreach ($player1_events as $player1_event) {
+			if (gettype($player1_event) == "object") {
+				$p_brws = json_decode($player1_event->p_brw);
+				$p_gahs = json_decode($player1_event->p_gah);
+			} else {
+				$p_brws = json_decode($player1_event["p_brw"]);
+				$p_gahs = json_decode($player1_event["p_gah"]);
+			}
+			foreach ($p_brws as $p_brw) {
+				$player1_brw += array_sum($p_brw);
+			}
+			foreach ($p_gahs as $p_gah) {
+				$player1_gah += array_sum($p_gah);
+			}
+			$i ++;
+			if ($i == $limit) {
+				break;
+			}
+		}
+
+		$player2_gah = 0;
+		$player2_brw = 0;
+		$i = 0;
+		foreach ($player2_events as $player2_event) {
+			if (gettype($player2_event) == "object") {
+				$p_brws = json_decode($player2_event->p_brw);
+				$p_gahs = json_decode($player2_event->p_gah);
+			} else {
+				$p_brws = json_decode($player2_event["p_brw"]);
+				$p_gahs = json_decode($player2_event["p_gah"]);
+			}
+			foreach ($p_brws as $p_brw) {
+				$player2_brw += array_sum($p_brw);
+			}
+			foreach ($p_gahs as $p_gah) {
+				$player2_gah += array_sum($p_gah);
+			}
+			$i ++;
+			if ($i == $limit) {
+				break;
+			}
+		}
+		$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+		if (($expected_winner == 1 && $player1_odd < $player2_odd) || ($expected_winner == 2 && $player2_odd < $player1_odd)) {
+			return $expected_winner;
+		} else {
+			return 0;
+		}
+	}
+
+	public static function robot31($player1_events, $player2_events, $limit) {
+		$player1_gah = 0;
+		$player1_brw = 0;
+		$i = 0;
+		foreach ($player1_events as $player1_event) {
+			if (gettype($player1_event) == "object") {
+				$p_brws = json_decode($player1_event->p_brw);
+				$p_gahs = json_decode($player1_event->p_gah);
+			} else {
+				$p_brws = json_decode($player1_event["p_brw"]);
+				$p_gahs = json_decode($player1_event["p_gah"]);
+			}
+			foreach ($p_brws as $p_brw) {
+				$player1_brw += array_sum($p_brw);
+			}
+			foreach ($p_gahs as $p_gah) {
+				$player1_gah += array_sum($p_gah);
+			}
+			$i ++;
+			if ($i == $limit) {
+				break;
+			}
+		}
+
+		$player2_gah = 0;
+		$player2_brw = 0;
+		$i = 0;
+		foreach ($player2_events as $player2_event) {
+			if (gettype($player2_event) == "object") {
+				$p_brws = json_decode($player2_event->p_brw);
+				$p_gahs = json_decode($player2_event->p_gah);
+			} else {
+				$p_brws = json_decode($player2_event["p_brw"]);
+				$p_gahs = json_decode($player2_event["p_gah"]);
+			}
+			foreach ($p_brws as $p_brw) {
+				$player2_brw += array_sum($p_brw);
+			}
+			foreach ($p_gahs as $p_gah) {
+				$player2_gah += array_sum($p_gah);
+			}
+			$i ++;
+			if ($i == $limit) {
+				break;
+			}
+		}
+		$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+		return $expected_winner;
+	}
+
+	public static function robot4344($player1_events, $player2_events, $limit, $player_detail) {
+		$player1_ranking = $player_detail["player1_ranking"];
+		$player2_ranking = $player_detail["player2_ranking"];
+		$player1_gah = 0;
+		$player1_brw = 0;
+		$i = 0;
+		foreach ($player1_events as $player1_event) {
+			if (gettype($player1_event) == "object") {
+				$p_brws = json_decode($player1_event->p_brw);
+				$p_gahs = json_decode($player1_event->p_gah);
+			} else {
+				$p_brws = json_decode($player1_event["p_brw"]);
+				$p_gahs = json_decode($player1_event["p_gah"]);
+			}
+			foreach ($p_brws as $p_brw) {
+				$player1_brw += array_sum($p_brw);
+			}
+			foreach ($p_gahs as $p_gah) {
+				$player1_gah += array_sum($p_gah);
+			}
+			$i ++;
+			if ($i == $limit) {
+				break;
+			}
+		}
+
+		$player2_gah = 0;
+		$player2_brw = 0;
+		$i = 0;
+		foreach ($player2_events as $player2_event) {
+			if (gettype($player2_event) == "object") {
+				$p_brws = json_decode($player2_event->p_brw);
+				$p_gahs = json_decode($player2_event->p_gah);
+			} else {
+				$p_brws = json_decode($player2_event["p_brw"]);
+				$p_gahs = json_decode($player2_event["p_gah"]);
+			}
+			foreach ($p_brws as $p_brw) {
+				$player2_brw += array_sum($p_brw);
+			}
+			foreach ($p_gahs as $p_gah) {
+				$player2_gah += array_sum($p_gah);
+			}
+			$i ++;
+			if ($i == $limit) {
+				break;
+			}
+		}
+		$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+		if (($expected_winner == 1 && $player1_ranking < $player2_ranking) || ($expected_winner == 2 && $player2_ranking < $player1_ranking)) {
+			return $expected_winner;
+		} else {
+			return 0;
+		}
+	}
+
+	/**
+	 * Get the matches that have rank and odd
+	 */
+	public static function filterMatchesByRankOdd ($matches) {
+		$filteredMatches = array();
+		foreach ($matches as $match) {
+			$player1_ranking = $match["player1_ranking"];
+			$player2_ranking = $match["player2_ranking"];
+			$player1_odd = $match["player1_odd"];
+			$player2_odd = $match["player2_odd"];
+			if (($player1_ranking != "-" && $player2_ranking != "-" && $player1_odd != NULL && $player2_odd != NULL) ||
+			($player1_ranking == "-" && $player2_ranking == "-")) {
+				array_push($filteredMatches, $match);
+			}
+		}
+		return $filteredMatches;
+	}
+
 	/**
 	 * Create t_backtest_bots_ ... about the strategies
 	 */
@@ -1269,7 +1673,10 @@ class Helper {
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			1, 1, 1, 1,
+			0, 0, 0, 0,
+			1, 1,
 		];
 		/* --- Create t_backtest_bots_brw_10 table --- start --- */
 		$backtest_bots = [
@@ -1316,6 +1723,25 @@ class Helper {
 			"t_backtest_bots_brw_gah_20_surface",
 			"t_backtest_bots_brw_gah_25_surface",
 			"t_backtest_bots_brw_gah_30_surface",
+
+			// Ranked --- start ---
+			"t_backtest_bots_brw_gah_odd_10",
+			"t_backtest_bots_brw_gah_odd_20",
+
+			"t_backtest_bots_brw_gah_rank_10",
+			"t_backtest_bots_brw_gah_rank_20",
+			// Ranked --- end ---
+
+			"t_backtest_bots_brw_gah_rank_h_10",
+			"t_backtest_bots_brw_gah_rank_h_20",
+
+			"t_backtest_bots_brw_gah_rank_h_mon_tue_10",
+			"t_backtest_bots_brw_gah_rank_h_mon_tue_20",
+
+			// Unranked --- start ---
+			"t_backtest_bots_brw_gah_odd_unranked_10",
+			"t_backtest_bots_brw_gah_odd_unranked_20",
+			// Unranked --- end ---
 		];
 
 		if ($enable_robots[0]) {
@@ -1654,7 +2080,6 @@ class Helper {
 		}
 
 		// BRW + GAH
-		/* --- GAH --- */
 		if ($enable_robots[30]) {
 			Schema::dropIfExists($backtest_bots[30]);
 			Schema::create($backtest_bots[30], function($table) {
@@ -1785,9 +2210,167 @@ class Helper {
 				$table->integer("real_winner");
 			});
 		}
-		
 
-		/* --- Get player ids between 2021-04-05 and 2021-04-11 --- start --- */
+		// BRW + GAH + ODD (Ranked)
+		if ($enable_robots[40]) {
+			Schema::dropIfExists($backtest_bots[40]);
+			Schema::create($backtest_bots[40], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->float("p1_odd");
+				$table->float("p2_odd");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+		if ($enable_robots[41]) {
+			Schema::dropIfExists($backtest_bots[41]);
+			Schema::create($backtest_bots[41], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->float("p1_odd");
+				$table->float("p2_odd");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+
+		// BRW + GAH + RANK (Lower) (Ranked)
+		if ($enable_robots[42]) {
+			Schema::dropIfExists($backtest_bots[42]);
+			Schema::create($backtest_bots[42], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->integer("p1_rank");
+				$table->integer("p2_rank");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+		if ($enable_robots[43]) {
+			Schema::dropIfExists($backtest_bots[43]);
+			Schema::create($backtest_bots[43], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->integer("p1_rank");
+				$table->integer("p2_rank");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+
+		// BRW + GAH + RANK (Higher) with ODD (all range)
+		if ($enable_robots[44]) {
+			Schema::dropIfExists($backtest_bots[44]);
+			Schema::create($backtest_bots[44], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->integer("p1_rank");
+				$table->integer("p2_rank");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+		if ($enable_robots[45]) {
+			Schema::dropIfExists($backtest_bots[45]);
+			Schema::create($backtest_bots[45], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->integer("p1_rank");
+				$table->integer("p2_rank");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+
+		// BRW + GAH + RANK (Higher) with ODD (Monday and Tuesday)
+		if ($enable_robots[46]) {
+			Schema::dropIfExists($backtest_bots[46]);
+			Schema::create($backtest_bots[46], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->integer("p1_rank");
+				$table->integer("p2_rank");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+		if ($enable_robots[47]) {
+			Schema::dropIfExists($backtest_bots[47]);
+			Schema::create($backtest_bots[47], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->integer("p1_rank");
+				$table->integer("p2_rank");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+
+		// BRW + GAH + ODD (Unranked)
+		if ($enable_robots[48]) {
+			Schema::dropIfExists($backtest_bots[48]);
+			Schema::create($backtest_bots[48], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->float("p1_odd");
+				$table->float("p2_odd");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+		if ($enable_robots[49]) {
+			Schema::dropIfExists($backtest_bots[49]);
+			Schema::create($backtest_bots[49], function($table) {
+				$table->increments("id");
+				$table->integer("event_id");
+				$table->integer("p1_brw");
+				$table->integer("p2_brw");
+				$table->integer("p1_gah");
+				$table->integer("p2_gah");
+				$table->float("p1_odd");
+				$table->float("p2_odd");
+				$table->integer("expected_winner");
+				$table->integer("real_winner");
+			});
+		}
+		
 		// get events
 		$events = DB::table("t_matches_2021_03")
 					->where("time_status", 3)
@@ -1795,12 +2378,32 @@ class Helper {
 		$total_event_cnt = count($events);
 		$log = "Total events: " . $total_event_cnt;
 		Helper::printLog($log);
+
+		$players = DB::table("t_players")->get();
+		$player_ids = array();
+		$player_ranks = array();
+		foreach ($players as $player) {
+			array_push($player_ids, $player->api_id);
+			array_push($player_ranks, $player->ranking);
+		}
 		$event_cnt = 0;
 		foreach ($events as $event) {
 			$event_id = $event->event_id; 
 			$surface = $event->surface;
 			$player1_id = $event->player1_id;
 			$player2_id = $event->player2_id;
+			$player1_odd = $event->player1_odd;
+			$player2_odd = $event->player2_odd;
+			if ($player1_odd != NULL) {
+				$player1_odd = (float)$player1_odd;
+			}
+			if ($player2_odd != NULL) {
+				$player2_odd = (float)$player2_odd;
+			}
+
+			// if ($event->scores != "" &&
+			// 	in_array($player1_id, $player_ids) && in_array($player2_id, $player_ids) &&
+			// 	$player1_odd != NULL && $player2_odd != NULL) {
 			if ($event->scores != "") {
 				$scores = explode(",", $event->scores);
 				$scores = explode("-", $scores[0]);
@@ -1810,918 +2413,1879 @@ class Helper {
 					} else {
 						$real_winner = 2;
 					}
+
+					$weekday = date('N', $event->time); 
+
+					if (in_array($player1_id, $player_ids)) {
+						$key_1 = array_search($player1_id, $player_ids);
+						$player1_ranking = $player_ranks[$key_1];
+					} else {
+						$player1_ranking = 501;
+					}
+					if (in_array($player2_id, $player_ids)) {
+						$key_2 = array_search($player2_id, $player_ids);
+						$player2_ranking = $player_ranks[$key_2];
+					} else {
+						$player2_ranking = 501;
+					}
 	
 					$player1_events = DB::table($backtest_players_table)
-												->where("p_id", $player1_id)
-												->orderByDesc("time")
-												->limit(30)
-												->get();
+											->select("event_id", "p_brw", "p_brl", "p_gah")
+											->where("p_id", $player1_id)
+											->orderByDesc("time")
+											->get();
+					$player1_events = Helper::getUniqueMatchesByEventId($player1_events, 30);
+
 					$player1_surface_events = DB::table($backtest_players_table)
+													->select("event_id", "p_brw", "p_brl", "p_gah")
 													->where("p_id", $player1_id)
 													->where("surface", $surface)
 													->orderByDesc("time")
-													->limit(30)
 													->get();
+					$player1_surface_events = Helper::getUniqueMatchesByEventId($player1_surface_events, 30);
+
 					$player2_events = DB::table($backtest_players_table)
-												->where("p_id", $player2_id)
-												->orderByDesc("time")
-												->limit(30)
-												->get();
+											->select("event_id", "p_brw", "p_brl", "p_gah")
+											->where("p_id", $player2_id)
+											->orderByDesc("time")
+											->get();
+					$player2_events = Helper::getUniqueMatchesByEventId($player2_events, 30);
+
 					$player2_surface_events = DB::table($backtest_players_table)
+													->select("event_id", "p_brw", "p_brl", "p_gah")
 													->where("p_id", $player2_id)
 													->where("surface", $surface)
 													->orderByDesc("time")
-													->limit(30)
 													->get();
-					/* --- strategy 1 (BRW + L10) --- start --- */
-					if ($enable_robots[0]) {
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
+					$player1_surface_events = Helper::getUniqueMatchesByEventId($player1_surface_events, 30);
+
+					// /* --- strategy 1 (BRW + L10) --- start --- */
+					// if ($enable_robots[0]) {
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[0])
-							->insert($insert_data);
-					}
-					/* --- strategy 1 (BRW + L10) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[0])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 1 (BRW + L10) ---  end  --- */
 	
-					/* --- strategy 2 (BRW + L15) --- start --- */
-					if ($enable_robots[1]) {
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
+					// /* --- strategy 2 (BRW + L15) --- start --- */
+					// if ($enable_robots[1]) {
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[1])
-							->insert($insert_data);
-					}
-					/* --- strategy 2 (BRW + L15) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[1])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 2 (BRW + L15) ---  end  --- */
 	
-					/* --- strategy 3 (BRW + L20) --- start --- */
-					if ($enable_robots[2]) {
-						$player1_brw = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
+					// /* --- strategy 3 (BRW + L20) --- start --- */
+					// if ($enable_robots[2]) {
+					// 	$player1_brw = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[2])
-							->insert($insert_data);
-					}
-					/* --- strategy 3 (BRW + L20) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[2])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 3 (BRW + L20) ---  end  --- */
 	
-					/* --- strategy 4 (BRW + L25) --- start --- */
-					if ($enable_robots[3]) {
-						$player1_brw = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
+					// /* --- strategy 4 (BRW + L25) --- start --- */
+					// if ($enable_robots[3]) {
+					// 	$player1_brw = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[3])
-							->insert($insert_data);
-					}
-					/* --- strategy 4 (BRW + L25) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[3])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 4 (BRW + L25) ---  end  --- */
 	
-					/* --- strategy 5 (BRW + L30) --- start --- */
-					if ($enable_robots[4]) {
-						$player1_brw = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
+					// /* --- strategy 5 (BRW + L30) --- start --- */
+					// if ($enable_robots[4]) {
+					// 	$player1_brw = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[4])
-							->insert($insert_data);
-					}
-					/* --- strategy 5 (BRW + L20) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[4])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 5 (BRW + L20) ---  end  --- */
 	
-					/* --- strategy 6 (BRW + surface + L10) --- start --- */
-					if ($enable_robots[5]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-	
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brw = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
+					// /* --- strategy 6 (BRW + surface + L10) --- start --- */
+					// if ($enable_robots[5] && $surface != NULL) {
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[5])
-							->insert($insert_data);
-					}
-					/* --- strategy 6 (BRW + surface + L10) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[5])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 6 (BRW + surface + L10) ---  end  --- */
 	
-					/* --- strategy 7 (BRW + surface + L15) --- start --- */
-					if ($enable_robots[6]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brw = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
+					// /* --- strategy 7 (BRW + surface + L15) --- start --- */
+					// if ($enable_robots[6] && $surface != NULL) {
+					// 	$player1_brw = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[6])
-							->insert($insert_data);
-					}
-					/* --- strategy 7 (BRW + surface + L15) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[6])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 7 (BRW + surface + L15) ---  end  --- */
 	
-					/* --- strategy 8 (BRW + surface + L20) --- start --- */
-					if ($enable_robots[7]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brw = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
+					// /* --- strategy 8 (BRW + surface + L20) --- start --- */
+					// if ($enable_robots[7] && $surface != NULL) {
+					// 	$player1_brw = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[7])
-							->insert($insert_data);
-					}
-					/* --- strategy 8 (BRW + surface + L20) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[7])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 8 (BRW + surface + L20) ---  end  --- */
 	
-					/* --- strategy 9 (BRW + surface + L25) --- start --- */
-					if ($enable_robots[8]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brw = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
+					// /* --- strategy 9 (BRW + surface + L25) --- start --- */
+					// if ($enable_robots[8] && $surface != NULL) {
+					// 	$player1_brw = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[8])
-							->insert($insert_data);
-					}
-					/* --- strategy 9 (BRW + surface + L25) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[8])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 9 (BRW + surface + L25) ---  end  --- */
 	
-					/* --- strategy 10 (BRW + surface + L30) --- start --- */
-					if ($enable_robots[9]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brw = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
+					// /* --- strategy 10 (BRW + surface + L30) --- start --- */
+					// if ($enable_robots[9] && $surface != NULL) {
+					// 	$player1_brw = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[9])
-							->insert($insert_data);
-					}
-					/* --- strategy 10 (BRW + surface + L30) ---  end  --- */
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"expected_winner" 	=> $player1_brw >= $player2_brw ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[9])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 10 (BRW + surface + L30) ---  end  --- */
 	
 	
-					/* --- strategy 11 (BRL + L10) --- start --- */
-					if ($enable_robots[10]) {
-						$player1_brl = 0;
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
+					// /* --- strategy 11 (BRL + L10) --- start --- */
+					// if ($enable_robots[10]) {
+					// 	$player1_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[10])
-							->insert($insert_data);
-					}
-					/* --- strategy 11 (BRL + L10) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[10])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 11 (BRL + L10) ---  end  --- */
 	
-					/* --- strategy 12 (BRL + L15) --- start --- */
-					if ($enable_robots[11]) {
-						$player1_brl = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
+					// /* --- strategy 12 (BRL + L15) --- start --- */
+					// if ($enable_robots[11]) {
+					// 	$player1_brl = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[11])
-							->insert($insert_data);
-					}
-					/* --- strategy 12 (BRL + L15) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[11])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 12 (BRL + L15) ---  end  --- */
 	
-					/* --- strategy 13 (BRL + L20) --- start --- */
-					if ($enable_robots[12]) {
-						$player1_brl = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
+					// /* --- strategy 13 (BRL + L20) --- start --- */
+					// if ($enable_robots[12]) {
+					// 	$player1_brl = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[12])
-							->insert($insert_data);
-					}
-					/* --- strategy 13 (BRL + L20) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[12])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 13 (BRL + L20) ---  end  --- */
 	
-					/* --- strategy 14 (BRL + L25) --- start --- */
-					if ($enable_robots[13]) {
-						$player1_brl = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
+					// /* --- strategy 14 (BRL + L25) --- start --- */
+					// if ($enable_robots[13]) {
+					// 	$player1_brl = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[13])
-							->insert($insert_data);
-					}
-					/* --- strategy 14 (BRL + L25) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[13])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 14 (BRL + L25) ---  end  --- */
 	
-					/* --- strategy 15 (BRL + L30) --- start --- */
-					if ($enable_robots[14]) {
-						$player1_brl = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
+					// /* --- strategy 15 (BRL + L30) --- start --- */
+					// if ($enable_robots[14]) {
+					// 	$player1_brl = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[14])
-							->insert($insert_data);
-					}
-					/* --- strategy 15 (BRL + L20) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[14])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 15 (BRL + L20) ---  end  --- */
 	
-					/* --- strategy 16 (BRL + surface + L10) --- start --- */
-					if ($enable_robots[15]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-	
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brl = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
+					// /* --- strategy 16 (BRL + surface + L10) --- start --- */
+					// if ($enable_robots[15] && $surface != NULL) {
+					// 	$player1_brl = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[15])
-							->insert($insert_data);
-					}
-					/* --- strategy 16 (BRL + surface + L10) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[15])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 16 (BRL + surface + L10) ---  end  --- */
 	
-					/* --- strategy 17 (BRL + surface + L15) --- start --- */
-					if ($enable_robots[16]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brl = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
+					// /* --- strategy 17 (BRL + surface + L15) --- start --- */
+					// if ($enable_robots[16] && $surface != NULL) {
+					// 	$player1_brl = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[16])
-							->insert($insert_data);
-					}
-					/* --- strategy 17 (BRL + surface + L15) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[16])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 17 (BRL + surface + L15) ---  end  --- */
 	
-					/* --- strategy 18 (BRL + surface + L20) --- start --- */
-					if ($enable_robots[17]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brl = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
+					// /* --- strategy 18 (BRL + surface + L20) --- start --- */
+					// if ($enable_robots[17] && $surface != NULL) {
+					// 	$player1_brl = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[17])
-							->insert($insert_data);
-					}
-					/* --- strategy 18 (BRL + surface + L20) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[17])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 18 (BRL + surface + L20) ---  end  --- */
 	
-					/* --- strategy 19 (BRL + surface + L25) --- start --- */
-					if ($enable_robots[18]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brl = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
+					// /* --- strategy 19 (BRL + surface + L25) --- start --- */
+					// if ($enable_robots[18] && $surface != NULL) {
+					// 	$player1_brl = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[18])
-							->insert($insert_data);
-					}
-					/* --- strategy 19 (BRL + surface + L25) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[18])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 19 (BRL + surface + L25) ---  end  --- */
 	
-					/* --- strategy 20 (BRL + surface + L30) --- start --- */
-					if ($enable_robots[19]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_brl = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brls = json_decode($player1_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player1_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
+					// /* --- strategy 20 (BRL + surface + L30) --- start --- */
+					// if ($enable_robots[19] && $surface != NULL) {
+					// 	$player1_brl = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brls = json_decode($player1_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player1_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_brl = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brls = json_decode($player2_event->p_brl);
-							foreach ($p_brls as $p_brl) {
-								$player2_brl += array_sum($p_brl);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brl" 			=> $player1_brl,
-							"p2_brl" 			=> $player2_brl,
-							"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[19])
-							->insert($insert_data);
-					}
-					/* --- strategy 20 (BRL + surface + L30) ---  end  --- */
+					// 	$player2_brl = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brls = json_decode($player2_event->p_brl);
+					// 		foreach ($p_brls as $p_brl) {
+					// 			$player2_brl += array_sum($p_brl);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brl" 			=> $player1_brl,
+					// 		"p2_brl" 			=> $player2_brl,
+					// 		"expected_winner" 	=> $player1_brl < $player2_brl ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[19])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 20 (BRL + surface + L30) ---  end  --- */
 	
 	
-					/* --- strategy 21 (GAH + L10) --- start --- */
-					if ($enable_robots[20]) {
+					// /* --- strategy 21 (GAH + L10) --- start --- */
+					// if ($enable_robots[20]) {
+					// 	$player1_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[20])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 21 (GAH + L10) ---  end  --- */
+	
+					// /* --- strategy 22 (GAH + L15) --- start --- */
+					// if ($enable_robots[21]) {
+					// 	$player1_gah = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[21])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 22 (GAH + L15) ---  end  --- */
+	
+					// /* --- strategy 23 (GAH + L20) --- start --- */
+					// if ($enable_robots[22]) {
+					// 	$player1_gah = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[22])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 23 (GAH + L20) ---  end  --- */
+	
+					// /* --- strategy 24 (GAH + L25) --- start --- */
+					// if ($enable_robots[23]) {
+					// 	$player1_gah = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[23])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 24 (GAH + L25) ---  end  --- */
+	
+					// /* --- strategy 25 (GAH + L30) --- start --- */
+					// if ($enable_robots[24]) {
+					// 	$player1_gah = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[24])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 25 (GAH + L20) ---  end  --- */
+	
+					// /* --- strategy 26 (GAH + surface + L10) --- start --- */
+					// if ($enable_robots[25] && $surface != NULL) {
+					// 	$player1_gah = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[25])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 26 (GAH + surface + L10) ---  end  --- */
+	
+					// /* --- strategy 27 (GAH + surface + L15) --- start --- */
+					// if ($enable_robots[26] && $surface != NULL) {
+					// 	$player1_gah = 0;
+					// 	$i = 0;	
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[26])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 27 (GAH + surface + L15) ---  end  --- */
+	
+					// /* --- strategy 28 (GAH + surface + L20) --- start --- */
+					// if ($enable_robots[27] && $surface != NULL) {
+					// 	$player1_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[27])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 28 (GAH + surface + L20) ---  end  --- */
+	
+					// /* --- strategy 29 (GAH + surface + L25) --- start --- */
+					// if ($enable_robots[28] && $surface != NULL) {
+					// 	$player1_gah = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[28])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 29 (GAH + surface + L25) ---  end  --- */
+	
+					// /* --- strategy 30 (GAH + surface + L30) --- start --- */
+					// if ($enable_robots[29] && $surface != NULL) {
+					// 	$player1_gah = 0;	
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[29])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 30 (GAH + surface + L30) ---  end  --- */
+	
+
+					// /* --- strategy 31 (BRW + GAH + L10) --- start --- */
+					// if ($enable_robots[30]) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[30])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 31 (BRW + GAH + L10) ---  end  --- */
+
+					// /* --- strategy 32 (BRW + GAH + L15) --- start --- */
+					// if ($enable_robots[31]) {
+					// 	$player1_gah = 0;	
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[31])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 32 (BRW + GAH + L15) ---  end  --- */
+
+					// /* --- strategy 33 (BRW + GAH + L20) --- start --- */
+					// if ($enable_robots[32]) {
+					// 	$player1_gah = 0;	
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[32])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 33 (BRW + GAH + L20) ---  end  --- */
+
+					// /* --- strategy 34 (BRW + GAH + L25) --- start --- */
+					// if ($enable_robots[33]) {
+					// 	$player1_gah = 0;	
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[33])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 34 (BRW + GAH + L25) ---  end  --- */
+
+					// /* --- strategy 35 (BRW + GAH + L30) --- start --- */
+					// if ($enable_robots[34]) {
+					// 	$player1_gah = 0;	
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[34])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 35 (BRW + GAH + L20) ---  end  --- */
+
+					// /* --- strategy 36 (BRW + GAH + surface + L10) --- start --- */
+					// if ($enable_robots[35] && $surface != NULL) {
+					// 	$player1_gah = 0;	
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[35])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 36 (BRW + GAH + surface + L10) ---  end  --- */
+
+					// /* --- strategy 37 (BRW + GAH + surface + L15) --- start --- */
+					// if ($enable_robots[36] && $surface != NULL) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;	
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 15) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[36])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 37 (BRW + GAH + surface + L15) ---  end  --- */
+
+					// /* --- strategy 38 (BRW + GAH + surface + L20) --- start --- */
+					// if ($enable_robots[37] && $surface != NULL) {
+					// 	$player1_gah = 0;	
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[37])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 38 (BRW + GAH + surface + L20) ---  end  --- */
+
+					// /* --- strategy 39 (BRW + GAH + surface + L25) --- start --- */
+					// if ($enable_robots[38] && $surface != NULL) {
+					// 	$player1_gah = 0;	
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 25) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[38])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 39 (BRW + GAH + surface + L25) ---  end  --- */
+
+					// /* --- strategy 40 (BRW + GAH + surface + L30) --- start --- */
+					// if ($enable_robots[39] && $surface != NULL) {
+					// 	$player1_gah = 0;	
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_surface_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_surface_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 30) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	$insert_data = [
+					// 		"event_id" 			=> $event_id,
+					// 		"p1_brw" 			=> $player1_brw,
+					// 		"p2_brw" 			=> $player2_brw,
+					// 		"p1_gah" 			=> $player1_gah,
+					// 		"p2_gah" 			=> $player2_gah,
+					// 		"expected_winner" 	=> $expected_winner,
+					// 		"real_winner"		=> $real_winner,
+					// 	];
+					// 	DB::table($backtest_bots[39])
+					// 		->insert($insert_data);
+					// }
+					// /* --- strategy 40 (BRW + GAH + surface + L30) ---  end  --- */
+
+					// /* --- strategy 41 (BRW + GAH + ODD + L10) --- start --- */
+					// if ($enable_robots[40] &&
+					// 	$player1_odd != NULL && $player2_odd != NULL &&
+					// 	// (($player1_odd >= 1.7 && $player1_odd <= 2) || ($player2_odd >= 1.7 && $player2_odd <= 2)) &&
+					// 	$player1_ranking != 501 && $player2_ranking != 501
+					// ) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	if (($expected_winner == 1 && $player1_odd < $player2_odd) || ($expected_winner == 2 && $player2_odd < $player1_odd)) {
+					// 		$insert_data = [
+					// 			"event_id" 			=> $event_id,
+					// 			"p1_brw" 			=> $player1_brw,
+					// 			"p2_brw" 			=> $player2_brw,
+					// 			"p1_gah" 			=> $player1_gah,
+					// 			"p2_gah" 			=> $player2_gah,
+					// 			"p1_odd" 			=> $player1_odd,
+					// 			"p2_odd" 			=> $player2_odd,
+					// 			"expected_winner" 	=> $expected_winner,
+					// 			"real_winner"		=> $real_winner,
+					// 		];
+					// 		DB::table($backtest_bots[40])
+					// 			->insert($insert_data);
+					// 	}
+					// }
+					// /* --- strategy 41 (BRW + GAH + ODD + L10) ---  end  --- */
+
+					// /* --- strategy 42 (BRW + GAH + ODD + L20) --- start --- */
+					// if ($enable_robots[41] &&
+					// 	$player1_odd != NULL && $player2_odd != NULL &&
+					// 	// (($player1_odd >= 1.7 && $player1_odd <= 2) || ($player2_odd >= 1.7 && $player2_odd <= 2)) &&
+					// 	$player1_ranking != 501 && $player2_ranking != 501
+					// ) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+			
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	if (($expected_winner == 1 && $player1_odd < $player2_odd) || ($expected_winner == 2 && $player2_odd < $player1_odd)) {
+					// 		$insert_data = [
+					// 			"event_id" 			=> $event_id,
+					// 			"p1_brw" 			=> $player1_brw,
+					// 			"p2_brw" 			=> $player2_brw,
+					// 			"p1_gah" 			=> $player1_gah,
+					// 			"p2_gah" 			=> $player2_gah,
+					// 			"p1_odd" 			=> $player1_odd,
+					// 			"p2_odd" 			=> $player2_odd,
+					// 			"expected_winner" 	=> $expected_winner,
+					// 			"real_winner"		=> $real_winner,
+					// 		];
+					// 		DB::table($backtest_bots[41])
+					// 			->insert($insert_data);
+					// 	}
+					// }
+					/* --- strategy 42 (BRW + GAH + ODD + L20) ---  end  --- */
+
+					/* --- strategy 43 (BRW + GAH + RANK + L10) --- start --- */
+					if ($enable_robots[42] &&
+						$player1_odd != NULL && $player2_odd != NULL &&
+						// (($player1_odd >= 1.7 && $player1_odd <= 2) || ($player2_odd >= 1.7 && $player2_odd <= 2)) &&
+						$player1_ranking != 501 && $player2_ranking != 501
+					) {
 						$player1_gah = 0;
+						$player1_brw = 0;
 						$i = 0;
 						foreach ($player1_events as $player1_event) {
+							$p_brws = json_decode($player1_event->p_brw);
+							foreach ($p_brws as $p_brw) {
+								$player1_brw += array_sum($p_brw);
+							}
 							$p_gahs = json_decode($player1_event->p_gah);
 							foreach ($p_gahs as $p_gah) {
 								$player1_gah += array_sum($p_gah);
@@ -2733,8 +4297,13 @@ class Helper {
 						}
 			
 						$player2_gah = 0;
+						$player2_brw = 0;
 						$i = 0;
 						foreach ($player2_events as $player2_event) {
+							$p_brws = json_decode($player2_event->p_brw);
+							foreach ($p_brws as $p_brw) {
+								$player2_brw += array_sum($p_brw);
+							}
 							$p_gahs = json_decode($player2_event->p_gah);
 							foreach ($p_gahs as $p_gah) {
 								$player2_gah += array_sum($p_gah);
@@ -2744,423 +4313,31 @@ class Helper {
 								break;
 							}
 						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[20])
-							->insert($insert_data);
+						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+						if (($expected_winner == 1 && $player1_ranking < $player2_ranking) || ($expected_winner == 2 && $player2_ranking < $player1_ranking)) {
+							$insert_data = [
+								"event_id" 			=> $event_id,
+								"p1_brw" 			=> $player1_brw,
+								"p2_brw" 			=> $player2_brw,
+								"p1_gah" 			=> $player1_gah,
+								"p2_gah" 			=> $player2_gah,
+								"p1_rank" 			=> $player1_ranking,
+								"p2_rank" 			=> $player2_ranking,
+								"expected_winner" 	=> $expected_winner,
+								"real_winner"		=> $real_winner,
+							];
+							DB::table($backtest_bots[42])
+								->insert($insert_data);
+						}
 					}
-					/* --- strategy 21 (GAH + L10) ---  end  --- */
-	
-					/* --- strategy 22 (GAH + L15) --- start --- */
-					if ($enable_robots[21]) {
-						$player1_gah = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-			
-						$player2_gah = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[21])
-							->insert($insert_data);
-					}
-					/* --- strategy 22 (GAH + L15) ---  end  --- */
-	
-					/* --- strategy 23 (GAH + L20) --- start --- */
-					if ($enable_robots[22]) {
-						$player1_gah = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
-			
-						$player2_gah = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[22])
-							->insert($insert_data);
-					}
-					/* --- strategy 23 (GAH + L20) ---  end  --- */
-	
-					/* --- strategy 24 (GAH + L25) --- start --- */
-					if ($enable_robots[23]) {
-						$player1_gah = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-			
-						$player2_gah = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[23])
-							->insert($insert_data);
-					}
-					/* --- strategy 24 (GAH + L25) ---  end  --- */
-	
-					/* --- strategy 25 (GAH + L30) --- start --- */
-					if ($enable_robots[24]) {
-						$player1_gah = 0;	
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-			
-						$player2_gah = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[24])
-							->insert($insert_data);
-					}
-					/* --- strategy 25 (GAH + L20) ---  end  --- */
-	
-					/* --- strategy 26 (GAH + surface + L10) --- start --- */
-					if ($enable_robots[25]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-	
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
-			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[25])
-							->insert($insert_data);
-					}
-					/* --- strategy 26 (GAH + surface + L10) ---  end  --- */
-	
-					/* --- strategy 27 (GAH + surface + L15) --- start --- */
-					if ($enable_robots[26]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;
-						$i = 0;	
-						foreach ($player_sub_events as $player1_event) {
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[26])
-							->insert($insert_data);
-					}
-					/* --- strategy 27 (GAH + surface + L15) ---  end  --- */
-	
-					/* --- strategy 28 (GAH + surface + L20) --- start --- */
-					if ($enable_robots[27]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
-			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[27])
-							->insert($insert_data);
-					}
-					/* --- strategy 28 (GAH + surface + L20) ---  end  --- */
-	
-					/* --- strategy 29 (GAH + surface + L25) --- start --- */
-					if ($enable_robots[28]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[28])
-							->insert($insert_data);
-					}
-					/* --- strategy 29 (GAH + surface + L25) ---  end  --- */
-	
-					/* --- strategy 30 (GAH + surface + L30) --- start --- */
-					if ($enable_robots[29]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;	
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $player1_gah >= $player2_gah ? 1 : 2,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[29])
-							->insert($insert_data);
-					}
-					/* --- strategy 30 (GAH + surface + L30) ---  end  --- */
-	
+					/* --- strategy 43 (BRW + GAH + RANK + L10) ---  end  --- */
 
-					/* --- strategy 31 (BRW + GAH + L10) --- start --- */
-					if ($enable_robots[30]) {
+					/* --- strategy 44 (BRW + GAH + RANK Lower) + L20) --- start --- */
+					if ($enable_robots[43] &&
+						$player1_odd != NULL && $player2_odd != NULL &&
+						// (($player1_odd >= 1.7 && $player1_odd <= 2) || ($player2_odd >= 1.7 && $player2_odd <= 2)) &&
+						$player1_ranking != 501 && $player2_ranking != 501
+					) {
 						$player1_gah = 0;
 						$player1_brw = 0;
 						$i = 0;
@@ -3174,110 +4351,6 @@ class Helper {
 								$player1_gah += array_sum($p_gah);
 							}
 							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
-			
-						$player2_gah = 0;
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
-						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[30])
-							->insert($insert_data);
-					}
-					/* --- strategy 31 (BRW + GAH + L10) ---  end  --- */
-
-					/* --- strategy 32 (BRW + GAH + L15) --- start --- */
-					if ($enable_robots[31]) {
-						$player1_gah = 0;	
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-			
-						$player2_gah = 0;
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[31])
-							->insert($insert_data);
-					}
-					/* --- strategy 32 (BRW + GAH + L15) ---  end  --- */
-
-					/* --- strategy 33 (BRW + GAH + L20) --- start --- */
-					if ($enable_robots[32]) {
-						$player1_gah = 0;	
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
 							if ($i == 20) {
 								break;
 							}
@@ -3301,434 +4374,368 @@ class Helper {
 							}
 						}
 						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[32])
-							->insert($insert_data);
-					}
-					/* --- strategy 33 (BRW + GAH + L20) ---  end  --- */
-
-					/* --- strategy 34 (BRW + GAH + L25) --- start --- */
-					if ($enable_robots[33]) {
-						$player1_gah = 0;	
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
+						if (($expected_winner == 1 && $player1_ranking < $player2_ranking) || ($expected_winner == 2 && $player2_ranking < $player1_ranking)) {
+							$insert_data = [
+								"event_id" 			=> $event_id,
+								"p1_brw" 			=> $player1_brw,
+								"p2_brw" 			=> $player2_brw,
+								"p1_gah" 			=> $player1_gah,
+								"p2_gah" 			=> $player2_gah,
+								"p1_rank" 			=> $player1_ranking,
+								"p2_rank" 			=> $player2_ranking,
+								"expected_winner" 	=> $expected_winner,
+								"real_winner"		=> $real_winner,
+							];
+							DB::table($backtest_bots[43])
+								->insert($insert_data);
 						}
+					}
+					/* --- strategy 44 (BRW + GAH + RANK (Lower) + L20) ---  end  --- */
+
+					// /* --- strategy 45 (BRW + GAH + RANK (Higher) + ODD + L10) --- start --- */
+					// if ($enable_robots[44] && $player1_odd != NULL && $player2_odd != NULL) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_gah = 0;
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[33])
-							->insert($insert_data);
-					}
-					/* --- strategy 34 (BRW + GAH + L25) ---  end  --- */
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	if (($expected_winner == 1 && $player1_ranking > $player2_ranking) || ($expected_winner == 2 && $player2_ranking > $player1_ranking)) {
+					// 		$insert_data = [
+					// 			"event_id" 			=> $event_id,
+					// 			"p1_brw" 			=> $player1_brw,
+					// 			"p2_brw" 			=> $player2_brw,
+					// 			"p1_gah" 			=> $player1_gah,
+					// 			"p2_gah" 			=> $player2_gah,
+					// 			"p1_rank" 			=> $player1_ranking,
+					// 			"p2_rank" 			=> $player2_ranking,
+					// 			"expected_winner" 	=> $expected_winner,
+					// 			"real_winner"		=> $real_winner,
+					// 		];
+					// 		DB::table($backtest_bots[44])
+					// 			->insert($insert_data);
+					// 	}
+					// }
+					// /* --- strategy 44 (BRW + GAH + RANK (Higher) + ODD + L10) ---  end  --- */
 
-					/* --- strategy 35 (BRW + GAH + L30) --- start --- */
-					if ($enable_robots[34]) {
-						$player1_gah = 0;	
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player1_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
+					// /* --- strategy 46 (BRW + GAH + RANK (Higher) + ODD + L20) --- start --- */
+					// if ($enable_robots[45] && $player1_odd != NULL && $player2_odd != NULL) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						$player2_gah = 0;
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player2_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[34])
-							->insert($insert_data);
-					}
-					/* --- strategy 35 (BRW + GAH + L20) ---  end  --- */
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	if (($expected_winner == 1 && $player1_ranking > $player2_ranking) || ($expected_winner == 2 && $player2_ranking > $player1_ranking)) {
+					// 		$insert_data = [
+					// 			"event_id" 			=> $event_id,
+					// 			"p1_brw" 			=> $player1_brw,
+					// 			"p2_brw" 			=> $player2_brw,
+					// 			"p1_gah" 			=> $player1_gah,
+					// 			"p2_gah" 			=> $player2_gah,
+					// 			"p1_rank" 			=> $player1_ranking,
+					// 			"p2_rank" 			=> $player2_ranking,
+					// 			"expected_winner" 	=> $expected_winner,
+					// 			"real_winner"		=> $real_winner,
+					// 		];
+					// 		DB::table($backtest_bots[45])
+					// 			->insert($insert_data);
+					// 	}
+					// }
+					// /* --- strategy 46 (BRW + GAH + RANK (Higher) + ODD + L20) ---  end  --- */
 
-					/* --- strategy 36 (BRW + GAH + surface + L10) --- start --- */
-					if ($enable_robots[35]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;	
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
+					// /* --- strategy 47 (BRW + GAH + RANK (Higher) + ODD + L10 + Monday/Tuesday) --- start --- */
+					// if ($enable_robots[46] && $player1_odd != NULL && $player2_odd != NULL && ($weekday == 1 || $weekday == 2)) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 10) {
-								break;
-							}
-						}
-						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[35])
-							->insert($insert_data);
-					}
-					/* --- strategy 36 (BRW + GAH + surface + L10) ---  end  --- */
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	if (($expected_winner == 1 && $player1_ranking > $player2_ranking) || ($expected_winner == 2 && $player2_ranking > $player1_ranking)) {
+					// 		$insert_data = [
+					// 			"event_id" 			=> $event_id,
+					// 			"p1_brw" 			=> $player1_brw,
+					// 			"p2_brw" 			=> $player2_brw,
+					// 			"p1_gah" 			=> $player1_gah,
+					// 			"p2_gah" 			=> $player2_gah,
+					// 			"p1_rank" 			=> $player1_ranking,
+					// 			"p2_rank" 			=> $player2_ranking,
+					// 			"expected_winner" 	=> $expected_winner,
+					// 			"real_winner"		=> $real_winner,
+					// 		];
+					// 		DB::table($backtest_bots[46])
+					// 			->insert($insert_data);
+					// 	}
+					// }
+					// /* --- strategy 47 (BRW + GAH + RANK (Higher) + ODD + L10 + Monday/Tuesday) ---  end  --- */
 
-					/* --- strategy 37 (BRW + GAH + surface + L15) --- start --- */
-					if ($enable_robots[36]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;
-						$player1_brw = 0;
-						$i = 0;	
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
+					// /* --- strategy 48 (BRW + GAH + RANK (Higher) + ODD + L20 + Monday/Tuesday) --- start --- */
+					// if ($enable_robots[47] && $player1_odd != NULL && $player2_odd != NULL && ($weekday == 1 || $weekday == 2)) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 15) {
-								break;
-							}
-						}
-						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[36])
-							->insert($insert_data);
-					}
-					/* --- strategy 37 (BRW + GAH + surface + L15) ---  end  --- */
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	if (($expected_winner == 1 && $player1_ranking > $player2_ranking) || ($expected_winner == 2 && $player2_ranking > $player1_ranking)) {
+					// 		$insert_data = [
+					// 			"event_id" 			=> $event_id,
+					// 			"p1_brw" 			=> $player1_brw,
+					// 			"p2_brw" 			=> $player2_brw,
+					// 			"p1_gah" 			=> $player1_gah,
+					// 			"p2_gah" 			=> $player2_gah,
+					// 			"p1_rank" 			=> $player1_ranking,
+					// 			"p2_rank" 			=> $player2_ranking,
+					// 			"expected_winner" 	=> $expected_winner,
+					// 			"real_winner"		=> $real_winner,
+					// 		];
+					// 		DB::table($backtest_bots[47])
+					// 			->insert($insert_data);
+					// 	}
+					// }
+					// /* --- strategy 48 (BRW + GAH + RANK (Higher) + ODD + L20 + Monday/Tuesday) ---  end  --- */
 
-					/* --- strategy 38 (BRW + GAH + surface + L20) --- start --- */
-					if ($enable_robots[37]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;	
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
+					// /* --- strategy 49 (BRW + GAH + ODD + L10) unranked --- start --- */
+					// if ($enable_robots[48] &&
+					// 	$player1_odd != NULL && $player2_odd != NULL &&
+					// 	(($player1_odd >= 1.7 && $player1_odd <= 2) || ($player2_odd >= 1.7 && $player2_odd <= 2)) &&
+					// 	$player1_ranking == 501 && $player2_ranking == 501
+					// ) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 20) {
-								break;
-							}
-						}
-						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[37])
-							->insert($insert_data);
-					}
-					/* --- strategy 38 (BRW + GAH + surface + L20) ---  end  --- */
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 10) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	if (($expected_winner == 1 && $player1_odd < $player2_odd) || ($expected_winner == 2 && $player2_odd < $player1_odd)) {
+					// 		$insert_data = [
+					// 			"event_id" 			=> $event_id,
+					// 			"p1_brw" 			=> $player1_brw,
+					// 			"p2_brw" 			=> $player2_brw,
+					// 			"p1_gah" 			=> $player1_gah,
+					// 			"p2_gah" 			=> $player2_gah,
+					// 			"p1_odd" 			=> $player1_odd,
+					// 			"p2_odd" 			=> $player2_odd,
+					// 			"expected_winner" 	=> $expected_winner,
+					// 			"real_winner"		=> $real_winner,
+					// 		];
+					// 		DB::table($backtest_bots[48])
+					// 			->insert($insert_data);
+					// 	}
+					// }
+					// /* --- strategy 49 (BRW + GAH + ODD + L10) unranked ---  end  --- */
 
-					/* --- strategy 39 (BRW + GAH + surface + L25) --- start --- */
-					if ($enable_robots[38]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;	
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
+					// /* --- strategy 50 (BRW + GAH + ODD + L20) unranked --- start --- */
+					// if ($enable_robots[49] &&
+					// 	$player1_odd != NULL && $player2_odd != NULL &&
+					// 	(($player1_odd >= 1.7 && $player1_odd <= 2) || ($player2_odd >= 1.7 && $player2_odd <= 2)) &&
+					// 	$player1_ranking == 501 && $player2_ranking == 501
+					// ) {
+					// 	$player1_gah = 0;
+					// 	$player1_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player1_events as $player1_event) {
+					// 		$p_brws = json_decode($player1_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player1_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player1_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player1_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
 			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 25) {
-								break;
-							}
-						}
-						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[38])
-							->insert($insert_data);
-					}
-					/* --- strategy 39 (BRW + GAH + surface + L25) ---  end  --- */
+					// 	$player2_gah = 0;
+					// 	$player2_brw = 0;
+					// 	$i = 0;
+					// 	foreach ($player2_events as $player2_event) {
+					// 		$p_brws = json_decode($player2_event->p_brw);
+					// 		foreach ($p_brws as $p_brw) {
+					// 			$player2_brw += array_sum($p_brw);
+					// 		}
+					// 		$p_gahs = json_decode($player2_event->p_gah);
+					// 		foreach ($p_gahs as $p_gah) {
+					// 			$player2_gah += array_sum($p_gah);
+					// 		}
+					// 		$i ++;
+					// 		if ($i == 20) {
+					// 			break;
+					// 		}
+					// 	}
+					// 	$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
+					// 	if (($expected_winner == 1 && $player1_odd < $player2_odd) || ($expected_winner == 2 && $player2_odd < $player1_odd)) {
+					// 		$insert_data = [
+					// 			"event_id" 			=> $event_id,
+					// 			"p1_brw" 			=> $player1_brw,
+					// 			"p2_brw" 			=> $player2_brw,
+					// 			"p1_gah" 			=> $player1_gah,
+					// 			"p2_gah" 			=> $player2_gah,
+					// 			"p1_odd" 			=> $player1_odd,
+					// 			"p2_odd" 			=> $player2_odd,
+					// 			"expected_winner" 	=> $expected_winner,
+					// 			"real_winner"		=> $real_winner,
+					// 		];
+					// 		DB::table($backtest_bots[49])
+					// 			->insert($insert_data);
+					// 	}
+					// }
+					// /* --- strategy 50 (BRW + GAH + ODD + L20) unranked ---  end  --- */
 
-					/* --- strategy 40 (BRW + GAH + surface + L30) --- start --- */
-					if ($enable_robots[39]) {
-						if ($surface) {
-							$player_sub_events = $player1_events;
-						} else {
-							$player_sub_events = $player1_surface_events;
-						}
-						$player1_gah = 0;	
-						$player1_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player1_event) {
-							$p_brws = json_decode($player1_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player1_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player1_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player1_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-			
-						if ($surface) {
-							$player_sub_events = $player2_events;
-						} else {
-							$player_sub_events = $player2_surface_events;
-						}
-						$player2_gah = 0;
-						$player2_brw = 0;
-						$i = 0;
-						foreach ($player_sub_events as $player2_event) {
-							$p_brws = json_decode($player2_event->p_brw);
-							foreach ($p_brws as $p_brw) {
-								$player2_brw += array_sum($p_brw);
-							}
-							$p_gahs = json_decode($player2_event->p_gah);
-							foreach ($p_gahs as $p_gah) {
-								$player2_gah += array_sum($p_gah);
-							}
-							$i ++;
-							if ($i == 30) {
-								break;
-							}
-						}
-						$expected_winner = ($player1_brw + $player1_gah) >= ($player2_brw + $player2_gah) ? 1 : 2;
-						$insert_data = [
-							"event_id" 			=> $event_id,
-							"p1_brw" 			=> $player1_brw,
-							"p2_brw" 			=> $player2_brw,
-							"p1_gah" 			=> $player1_gah,
-							"p2_gah" 			=> $player2_gah,
-							"expected_winner" 	=> $expected_winner,
-							"real_winner"		=> $real_winner,
-						];
-						DB::table($backtest_bots[39])
-							->insert($insert_data);
-					}
-					/* --- strategy 40 (BRW + GAH + surface + L30) ---  end  --- */
 					$event_cnt ++;
 					$log = "Ended events: " . $total_event_cnt . " / " . $event_cnt;
 					Helper::printLog($log);

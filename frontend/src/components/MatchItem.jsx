@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
 import { getRelationData } from '../apis';
-import { getWinner, formatDateTime, filterData, sortByTime } from '../utils';
+import {
+  getWinner,
+  formatDateTime,
+  filterData,
+  sortByTime,
+  checkWinner,
+} from '../utils';
 import Surface from './InplayDetail/Surface';
 import Set from './InplayDetail/Set';
 import FilterRank from './InplayDetail/FilterRank';
@@ -20,6 +26,8 @@ const MatchItem = (props) => {
     triggerSet,
     openedDetail,
     setOpenedDetail,
+    winners,
+    roboPicks,
   } = props;
 
   const [relationData, setRelationData] = useState({});
@@ -34,13 +42,27 @@ const MatchItem = (props) => {
   const [selectedSet1, setSelectedSet1] = useState('ALL');
   const [selectedSet2, setSelectedSet2] = useState('ALL');
   // set initial box style
-  const [boxStyle, setBoxStyle] = useState('match-box');
+  const [matchVisible, setMatchVisible] = useState(true);
+  const [boxStyle, setBoxStyle] = useState('match-box green-border');
+  const [nameColor1, setNameColor1] = useState('');
+  const [nameColor2, setNameColor2] = useState('');
   const player = getWinner(item.scores);
   const datetime = formatDateTime(item.time);
   let scores = item.scores.split(',');
   if (type === 'inplay' || type === 'trigger1') {
     scores = item['ss'].split(',');
   }
+
+  useEffect(() => {
+    if (!type.includes('trigger')) {
+      const winner = checkWinner(item, winners);
+      if (winner['type'] == -1 && roboPicks) {
+        setMatchVisible(false);
+      } else {
+        setMatchVisible(true);
+      }
+    }
+  }, [roboPicks]);
 
   useEffect(() => {
     if (type === 'trigger1' || type === 'trigger2') {
@@ -68,7 +90,33 @@ const MatchItem = (props) => {
           !clickedEvents['set2'].includes(item['event_id'])) ||
         (triggerSet === 3 && !clickedEvents['set3'].includes(item['event_id']))
       ) {
-        setBoxStyle('match-box new-trigger-box');
+        setBoxStyle('match-box green-border');
+      } else {
+        setBoxStyle('match-box');
+      }
+    } else {
+      const winner = checkWinner(item, winners);
+      if (winner['type'] === 43 || winner['type'] === 44) {
+        setBoxStyle('match-box orange-border');
+        if (winner['winner'] === 1) {
+          setNameColor1('orange-color');
+        } else {
+          setNameColor2('orange-color');
+        }
+      } else if (winner['type'] === 41 || winner['type'] === 42) {
+        setBoxStyle('match-box green-border');
+        if (winner['winner'] === 1) {
+          setNameColor1('green-color');
+        } else {
+          setNameColor2('green-color');
+        }
+      } else if (winner['type'] === 31) {
+        setBoxStyle('match-box blue-border');
+        if (winner['winner'] === 1) {
+          setNameColor1('blue-color');
+        } else {
+          setNameColor2('blue-color');
+        }
       } else {
         setBoxStyle('match-box');
       }
@@ -155,7 +203,10 @@ const MatchItem = (props) => {
   ]);
 
   const handleMatchClicked = () => {
-    let data = {};
+    let data = {
+      p1_id: '',
+      p2_id: '',
+    };
     if (
       (openedDetail != undefined &&
         openedDetail['p1_id'] === item.player1_id &&
@@ -225,181 +276,185 @@ const MatchItem = (props) => {
   };
 
   return (
-    <div className="col-lg-4 col-md-6 col-sm-6 col-xs-12 mb-2 pb-2 pt-2 match-item">
-      <div className={boxStyle}>
-        <div className="current-match" onClick={handleMatchClicked}>
-          <div className="left">
-            <div className="name">
-              <span>{item.player1_name}</span>
-            </div>
-            <div className="pt-2">
-              <div
-                className={
-                  player === 1
-                    ? 'sub-left winner ranking'
-                    : 'sub-left loser ranking'
-                }
-              >
-                <span>{item.player1_ranking}</span>
-              </div>
-              <div className="sub-right">
-                <span>
-                  {item.player1_odd
-                    ? parseFloat(item.player1_odd).toFixed(2)
-                    : '-'}
-                </span>
-              </div>
-              <div className="sub-center">
-                <span>{item.surface ? item.surface : '-'}</span>
-              </div>
-            </div>
-          </div>
-          <div className="right">
-            <div className="name">
-              <span>{item.player2_name}</span>
-            </div>
-            <div className="pt-2">
-              <div
-                className={
-                  player === 2
-                    ? 'sub-left winner ranking'
-                    : 'sub-left loser ranking'
-                }
-              >
-                <span>{item.player2_ranking}</span>
-              </div>
-              <div className="sub-right">
-                <span>
-                  {item.player2_odd
-                    ? parseFloat(item.player2_odd).toFixed(2)
-                    : '-'}
-                </span>
-              </div>
-              <div className="sub-center">
-                <span>{item.surface ? item.surface : '-'}</span>
-              </div>
-            </div>
-          </div>
-          <div className="center">
-            <div className="scores">
-              {(type === 'inplay' ||
-                type === 'trigger1' ||
-                type === 'trigger2') &&
-                scores.map((score, index) => (
-                  <span
-                    key={index}
+    <>
+      {matchVisible && (
+        <div className="col-lg-4 col-md-6 col-sm-6 col-xs-12 mb-2 pb-2 pt-2 match-item">
+          <div className={boxStyle}>
+            <div className="current-match" onClick={handleMatchClicked}>
+              <div className="left">
+                <div className="name">
+                  <span className={nameColor1}>{item.player1_name}</span>
+                </div>
+                <div className="pt-2">
+                  <div
                     className={
-                      index === scores.length - 1 ? 'playing' : 'played'
+                      player === 1
+                        ? 'sub-left winner ranking'
+                        : 'sub-left loser ranking'
                     }
                   >
-                    {score}
-                  </span>
-                ))}
-              {type === 'upcoming' && <span>{datetime[0]}</span>}
-              {type === 'history' && (
-                <span>{item.scores.replaceAll(',', ' ')}</span>
-              )}
+                    <span>{item.player1_ranking}</span>
+                  </div>
+                  <div className="sub-right">
+                    <span>
+                      {item.player1_odd
+                        ? parseFloat(item.player1_odd).toFixed(2)
+                        : '-'}
+                    </span>
+                  </div>
+                  <div className="sub-center">
+                    <span>{item.surface ? item.surface : '-'}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="right">
+                <div className="name">
+                  <span className={nameColor2}>{item.player2_name}</span>
+                </div>
+                <div className="pt-2">
+                  <div
+                    className={
+                      player === 2
+                        ? 'sub-left winner ranking'
+                        : 'sub-left loser ranking'
+                    }
+                  >
+                    <span>{item.player2_ranking}</span>
+                  </div>
+                  <div className="sub-right">
+                    <span>
+                      {item.player2_odd
+                        ? parseFloat(item.player2_odd).toFixed(2)
+                        : '-'}
+                    </span>
+                  </div>
+                  <div className="sub-center">
+                    <span>{item.surface ? item.surface : '-'}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="center">
+                <div className="scores">
+                  {(type === 'inplay' ||
+                    type === 'trigger1' ||
+                    type === 'trigger2') &&
+                    scores.map((score, index) => (
+                      <span
+                        key={index}
+                        className={
+                          index === scores.length - 1 ? 'playing' : 'played'
+                        }
+                      >
+                        {score}
+                      </span>
+                    ))}
+                  {type === 'upcoming' && <span>{datetime[0]}</span>}
+                  {type === 'history' && (
+                    <span>{item.scores.replaceAll(',', ' ')}</span>
+                  )}
+                </div>
+                <div className="match-time">
+                  {type === 'history' && <span>-</span>}
+                  {type === 'upcoming' && <span>{datetime[1]}</span>}
+                  {(type === 'inplay' ||
+                    type === 'trigger1' ||
+                    type === 'trigger2') &&
+                    (item['indicator'] === '0,1' ? (
+                      <div className="inplay-left">
+                        <span>{item['points']}</span>
+                        <div className="inplay-green-dot"></div>
+                      </div>
+                    ) : item['indicator'] === '1,0' ? (
+                      <div className="inplay-right">
+                        <div className="inplay-green-dot"></div>
+                        <span>{item['points']}</span>
+                      </div>
+                    ) : (
+                      <div className="inplay-no-score">
+                        <span>0-0</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
             </div>
-            <div className="match-time">
-              {type === 'history' && <span>-</span>}
-              {type === 'upcoming' && <span>{datetime[1]}</span>}
-              {(type === 'inplay' ||
-                type === 'trigger1' ||
-                type === 'trigger2') &&
-                (item['indicator'] === '0,1' ? (
-                  <div className="inplay-left">
-                    <span>{item['points']}</span>
-                    <div className="inplay-green-dot"></div>
+            {!loading && detailOpened && (
+              <div className="players-detail">
+                <Surface
+                  setSelectedSurface={setSelectedSurface}
+                  selectedSurface={selectedSurface}
+                />
+                <div className="compare-filters">
+                  <div className="left-box">
+                    <div className="vs">
+                      <span>vs</span>
+                    </div>
+                    <div>
+                      <FilterRank
+                        selectedRankDiff={selectedRankDiff1}
+                        setSelectedRankDiff={setSelectedRankDiff1}
+                      />
+                      <AverageRanks
+                        player_id={item.player1_id}
+                        filteredRelationData={filteredRelationData}
+                      />
+                    </div>
                   </div>
-                ) : item['indicator'] === '1,0' ? (
-                  <div className="inplay-right">
-                    <div className="inplay-green-dot"></div>
-                    <span>{item['points']}</span>
+                  <div className="right-box">
+                    <div className="vs">
+                      <span>vs</span>
+                    </div>
+                    <div>
+                      <FilterRank
+                        selectedRankDiff={selectedRankDiff2}
+                        setSelectedRankDiff={setSelectedRankDiff2}
+                      />
+                      <AverageRanks
+                        player_id={item.player2_id}
+                        filteredRelationData={filteredRelationData}
+                      />
+                    </div>
                   </div>
-                ) : (
-                  <div className="inplay-no-score">
-                    <span>0-0</span>
+                  <div className="center-box">
+                    <div className="vs">
+                      <span>vs</span>
+                    </div>
+                    <div>
+                      <FilterOpponent
+                        selectedOpponent={selectedOpponent}
+                        setSelectedOpponent={setSelectedOpponent}
+                      />
+                      <FilterLimit
+                        selectedLimit={selectedLimit}
+                        setSelectedLimit={setSelectedLimit}
+                      />
+                    </div>
                   </div>
-                ))}
-            </div>
+                </div>
+                <div className="set">
+                  <div className="set-left-box">
+                    <Set
+                      selectedSet={selectedSet1}
+                      setSelectedSet={setSelectedSet1}
+                    />
+                  </div>
+                  <div className="set-right-box">
+                    <Set
+                      selectedSet={selectedSet2}
+                      setSelectedSet={setSelectedSet2}
+                    />
+                  </div>
+                </div>
+                <PlayerDetail
+                  player1_id={item.player1_id}
+                  player2_id={item.player2_id}
+                  filteredRelationData={filteredRelationData}
+                />
+              </div>
+            )}
           </div>
         </div>
-        {!loading && detailOpened && (
-          <div className="players-detail">
-            <Surface
-              setSelectedSurface={setSelectedSurface}
-              selectedSurface={selectedSurface}
-            />
-            <div className="compare-filters">
-              <div className="left-box">
-                <div className="vs">
-                  <span>vs</span>
-                </div>
-                <div>
-                  <FilterRank
-                    selectedRankDiff={selectedRankDiff1}
-                    setSelectedRankDiff={setSelectedRankDiff1}
-                  />
-                  <AverageRanks
-                    player_id={item.player1_id}
-                    filteredRelationData={filteredRelationData}
-                  />
-                </div>
-              </div>
-              <div className="right-box">
-                <div className="vs">
-                  <span>vs</span>
-                </div>
-                <div>
-                  <FilterRank
-                    selectedRankDiff={selectedRankDiff2}
-                    setSelectedRankDiff={setSelectedRankDiff2}
-                  />
-                  <AverageRanks
-                    player_id={item.player2_id}
-                    filteredRelationData={filteredRelationData}
-                  />
-                </div>
-              </div>
-              <div className="center-box">
-                <div className="vs">
-                  <span>vs</span>
-                </div>
-                <div>
-                  <FilterOpponent
-                    selectedOpponent={selectedOpponent}
-                    setSelectedOpponent={setSelectedOpponent}
-                  />
-                  <FilterLimit
-                    selectedLimit={selectedLimit}
-                    setSelectedLimit={setSelectedLimit}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="set">
-              <div className="set-left-box">
-                <Set
-                  selectedSet={selectedSet1}
-                  setSelectedSet={setSelectedSet1}
-                />
-              </div>
-              <div className="set-right-box">
-                <Set
-                  selectedSet={selectedSet2}
-                  setSelectedSet={setSelectedSet2}
-                />
-              </div>
-            </div>
-            <PlayerDetail
-              player1_id={item.player1_id}
-              player2_id={item.player2_id}
-              filteredRelationData={filteredRelationData}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </>
   );
 };
 
@@ -411,6 +466,8 @@ MatchItem.propTypes = {
   triggerSet: PropTypes.number,
   openedDetail: PropTypes.object,
   setOpenedDetail: PropTypes.func,
+  winners: PropTypes.array,
+  roboPicks: PropTypes.bool,
 };
 
 export default MatchItem;

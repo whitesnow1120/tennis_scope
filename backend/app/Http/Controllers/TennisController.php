@@ -344,6 +344,7 @@ class TennisController extends Controller
                             )
                             ->where("p_id", $player1_id)
                             ->get();
+            $player1_object = Helper::getUniqueMatchesByEventId($player1_object);
             
             $player2_object = DB::table($bucket_players_name)
                             ->select(
@@ -371,9 +372,23 @@ class TennisController extends Controller
                             )
                             ->where("p_id", $player2_id)
                             ->get();
+            $player2_object = Helper::getUniqueMatchesByEventId($player2_object);
             
             $opponent_object = DB::table($bucket_opponents_name)
+                                ->select(
+                                    "event_id",
+                                    "o_id",
+                                    "o_ranking",
+                                    "oo_id",
+                                    "oo_ranking",
+                                    "won",
+                                    "sets",
+                                    "depths",
+                                    "surface",
+                                    "time",
+                                )
                                 ->get();
+            $opponent_object = Helper::getUniqueMatchesByODetail($opponent_object);
         }
         
         return [
@@ -400,6 +415,7 @@ class TennisController extends Controller
             $bucket_table = "t_bucket_players_" . $player1_id . "_" . $player2_id;
             $player1_detail = DB::table($bucket_table)
                                 ->select(
+                                    "event_id",
                                     "p_depths",
                                     "time",
                                 )
@@ -411,6 +427,7 @@ class TennisController extends Controller
                                 ->get();
             $player2_detail = DB::table($bucket_table)
                                 ->select(
+                                    "event_id",
                                     "p_depths",
                                     "time",
                                 )
@@ -447,7 +464,13 @@ class TennisController extends Controller
         try {
             $date = $request->input('date', date('Y-m-d', time()));
             $history_data = $this->getMatches($date, 3); // time_status (3: ended)
-            return response()->json($history_data, 200);
+            // Get winner
+            $winners = Helper::getWinners($history_data, 0);
+            $response = [
+                "history_detail" => $history_data,
+                "winners" => $winners,
+            ];
+            return response()->json($response, 200);
         } catch (Exception $e) {
             return response()->json([], 500);
         }
@@ -459,7 +482,13 @@ class TennisController extends Controller
     public function upComing(Request $request) {
         try {
             $upcoming_data = $this->getMatches(null, 0); // time_status (0: upcoming)
-            return response()->json($upcoming_data, 200);
+            // Get winner
+            $winners = Helper::getWinners($upcoming_data, 1);
+            $response = [
+                "upcoming_detail" => $upcoming_data,
+                "winners" => $winners,
+            ];
+            return response()->json($response, 200);
         } catch (Exception $e) {
             return response()->json([], 500);
         }
@@ -479,9 +508,12 @@ class TennisController extends Controller
         try {
             $inplay_data = $this->getMatches(null, 1); // time_status (1: inplay)
             $players_detail = $this->triggerFilter1($inplay_data);
+            // Get winner
+            $winners = Helper::getWinners($inplay_data, 1);
             $response = [
                 "inplay_detail" => $inplay_data,
                 "players_detail" => $players_detail,
+                "winners" => $winners,
             ];
             return response()->json($response, 200);
         } catch (Exception $e) {
@@ -509,49 +541,64 @@ class TennisController extends Controller
     public function robots(Request $request) {
         try {
             $robot_tables = [
-                "t_backtest_bots_brw_10",
-                "t_backtest_bots_brw_15",
-                "t_backtest_bots_brw_20",
-                "t_backtest_bots_brw_25",
-                "t_backtest_bots_brw_30",
-                "t_backtest_bots_brw_10_surface",
-                "t_backtest_bots_brw_15_surface",
-                "t_backtest_bots_brw_20_surface",
-                "t_backtest_bots_brw_25_surface",
-                "t_backtest_bots_brw_30_surface",
+                // "t_backtest_bots_brw_10",
+                // "t_backtest_bots_brw_15",
+                // "t_backtest_bots_brw_20",
+                // "t_backtest_bots_brw_25",
+                // "t_backtest_bots_brw_30",
+                // "t_backtest_bots_brw_10_surface",
+                // "t_backtest_bots_brw_15_surface",
+                // "t_backtest_bots_brw_20_surface",
+                // "t_backtest_bots_brw_25_surface",
+                // "t_backtest_bots_brw_30_surface",
 
-                "t_backtest_bots_brl_10",
-                "t_backtest_bots_brl_15",
-                "t_backtest_bots_brl_20",
-                "t_backtest_bots_brl_25",
-                "t_backtest_bots_brl_30",
-                "t_backtest_bots_brl_10_surface",
-                "t_backtest_bots_brl_15_surface",
-                "t_backtest_bots_brl_20_surface",
-                "t_backtest_bots_brl_25_surface",
-                "t_backtest_bots_brl_30_surface",
+                // "t_backtest_bots_brl_10",
+                // "t_backtest_bots_brl_15",
+                // "t_backtest_bots_brl_20",
+                // "t_backtest_bots_brl_25",
+                // "t_backtest_bots_brl_30",
+                // "t_backtest_bots_brl_10_surface",
+                // "t_backtest_bots_brl_15_surface",
+                // "t_backtest_bots_brl_20_surface",
+                // "t_backtest_bots_brl_25_surface",
+                // "t_backtest_bots_brl_30_surface",
 
-                "t_backtest_bots_gah_10",
-                "t_backtest_bots_gah_15",
-                "t_backtest_bots_gah_20",
-                "t_backtest_bots_gah_25",
-                "t_backtest_bots_gah_30",
-                "t_backtest_bots_gah_10_surface",
-                "t_backtest_bots_gah_15_surface",
-                "t_backtest_bots_gah_20_surface",
-                "t_backtest_bots_gah_25_surface",
-                "t_backtest_bots_gah_30_surface",
+                // "t_backtest_bots_gah_10",
+                // "t_backtest_bots_gah_15",
+                // "t_backtest_bots_gah_20",
+                // "t_backtest_bots_gah_25",
+                // "t_backtest_bots_gah_30",
+                // "t_backtest_bots_gah_10_surface",
+                // "t_backtest_bots_gah_15_surface",
+                // "t_backtest_bots_gah_20_surface",
+                // "t_backtest_bots_gah_25_surface",
+                // "t_backtest_bots_gah_30_surface",
 
-                "t_backtest_bots_brw_gah_10",
-                "t_backtest_bots_brw_gah_15",
-                "t_backtest_bots_brw_gah_20",
-                "t_backtest_bots_brw_gah_25",
-                "t_backtest_bots_brw_gah_30",
-                "t_backtest_bots_brw_gah_10_surface",
-                "t_backtest_bots_brw_gah_15_surface",
-                "t_backtest_bots_brw_gah_20_surface",
-                "t_backtest_bots_brw_gah_25_surface",
-                "t_backtest_bots_brw_gah_30_surface",
+                // "t_backtest_bots_brw_gah_10",
+                // "t_backtest_bots_brw_gah_15",
+                // "t_backtest_bots_brw_gah_20",
+                // "t_backtest_bots_brw_gah_25",
+                // "t_backtest_bots_brw_gah_30",
+                // "t_backtest_bots_brw_gah_10_surface",
+                // "t_backtest_bots_brw_gah_15_surface",
+                // "t_backtest_bots_brw_gah_20_surface",
+                // "t_backtest_bots_brw_gah_25_surface",
+                // "t_backtest_bots_brw_gah_30_surface",
+
+                // "t_backtest_bots_brw_gah_odd_10",
+                // "t_backtest_bots_brw_gah_odd_20",
+
+                "t_backtest_bots_brw_gah_rank_10",
+                "t_backtest_bots_brw_gah_rank_20",
+
+                // "t_backtest_bots_brw_gah_rank_h_10",
+			    // "t_backtest_bots_brw_gah_rank_h_20",
+
+                // "t_backtest_bots_brw_gah_rank_h_mon_tue_10",
+			    // "t_backtest_bots_brw_gah_rank_h_mon_tue_20",
+
+                // "t_backtest_bots_brw_gah_odd_unranked_10",
+                // "t_backtest_bots_brw_gah_odd_unranked_20",
             ];
 
             $robots = array();

@@ -4,7 +4,7 @@ import { css } from '@emotion/core';
 import BounceLoader from 'react-spinners/BounceLoader';
 import PropTypes from 'prop-types';
 
-import { filterByRankOdd } from '../utils';
+import { filterByRankOdd, openedDetailExistInNewMathes } from '../utils';
 import { getUpcomingData } from '../apis';
 import MatchItem from '../components/MatchItem';
 import {
@@ -15,15 +15,17 @@ import {
 } from '../common/Constants';
 import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
+import CustomCheckbox from '../components/CustomCheckbox';
 
 const Upcoming = (props) => {
-  const { filterChanged, setFilterChanged } = props;
+  const { filterChanged, setFilterChanged, roboPicks, setRoboPicks } = props;
   const [openedDetail, setOpenedDetail] = useState({
     p1_id: '',
     p2_id: '',
   });
   const [upcomingData, setUpcomingData] = useState([]);
   const [upcomingFilteredData, setUpcomingFilteredData] = useState([]);
+  const [winners, setWinners] = useState([]);
   const [loading, setLoading] = useState(false);
   const rankFilter = localStorage.getItem('rankFilter');
   const [activeRank, setActiveRank] = useState(
@@ -44,6 +46,10 @@ const Upcoming = (props) => {
   `;
 
   const handleSliderChange = (value) => {
+    setOpenedDetail({
+      p1_id: '',
+      p2_id: '',
+    });
     setValues(value);
     setSliderValue(sliderValue === '0' ? '1' : '0');
     localStorage.setItem('sliderChanged', JSON.stringify(value));
@@ -57,16 +63,27 @@ const Upcoming = (props) => {
     const loadUpcomingData = async () => {
       const response = await getUpcomingData();
       if (response.status === 200) {
-        const filteredData = filterByRankOdd(response.data, activeRank, values);
-        setUpcomingData(response.data);
+        setWinners(response.data.winners);
+        const data = response.data.upcoming_detail;
+        const filteredData = filterByRankOdd(data, activeRank, values);
+        setUpcomingData(data);
         setUpcomingFilteredData(filteredData);
+        if (!openedDetailExistInNewMathes(filteredData, openedDetail)) {
+          setOpenedDetail({
+            p1_id: '',
+            p2_id: '',
+          });
+        }
       } else {
         setUpcomingData([]);
       }
       // Call the async function again
       setTimeout(function () {
-        loadUpcomingData();
-      }, 1000 * 60 * 10);
+        const pathName = window.location.pathname;
+        if (pathName.includes('upcoming')) {
+          loadUpcomingData();
+        }
+      }, 1000 * 60 * 5);
     };
 
     loadUpcomingData();
@@ -107,6 +124,11 @@ const Upcoming = (props) => {
               domain={domain}
               step={SLIDER_STEP}
             />
+            <CustomCheckbox
+              label="Robopicks"
+              isChecked={roboPicks}
+              setRoboPicks={setRoboPicks}
+            />
           </div>
           <div className="row mt-4">
             {upcomingFilteredData.length > 0 ? (
@@ -119,6 +141,8 @@ const Upcoming = (props) => {
                   setLoading={setLoading}
                   openedDetail={openedDetail}
                   setOpenedDetail={setOpenedDetail}
+                  winners={winners}
+                  roboPicks={roboPicks}
                 />
               ))
             ) : (
@@ -134,6 +158,8 @@ const Upcoming = (props) => {
 Upcoming.propTypes = {
   filterChanged: PropTypes.bool,
   setFilterChanged: PropTypes.func,
+  roboPicks: PropTypes.bool,
+  setRoboPicks: PropTypes.func,
 };
 
 export default Upcoming;

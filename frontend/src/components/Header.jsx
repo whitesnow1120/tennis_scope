@@ -23,6 +23,10 @@ const Header = (props) => {
     setActiveMenu,
     filterChanged,
     setInplayScoreData,
+    trigger1DataBySet,
+    setTrigger1DataBySet,
+    trigger2DataBySet,
+    setTrigger2DataBySet,
   } = props;
   const dispatch = useDispatch();
   const { userLoggedIn } = useSelector((state) => state.tennis);
@@ -32,16 +36,7 @@ const Header = (props) => {
 
   const [newTrigger1, setNewTrigger1] = useState(false);
   const [newTrigger2, setNewTrigger2] = useState(false);
-  const [trigger1DataBySet, setTrigger1DataBySet] = useState({
-    set1: [],
-    set2: [],
-    set3: [],
-  });
-  const [trigger2DataBySet, setTrigger2DataBySet] = useState({
-    set1: [],
-    set2: [],
-    set3: [],
-  });
+
   const [play, { stop }] = useSound(ding);
   const [played1, setPlayed1] = useState(false);
   const [played2, setPlayed2] = useState(false);
@@ -333,6 +328,10 @@ Header.propTypes = {
   setActiveMenu: PropTypes.func,
   filterChanged: PropTypes.bool,
   setInplayScoreData: PropTypes.func,
+  trigger1DataBySet: PropTypes.object,
+  setTrigger1DataBySet: PropTypes.func,
+  trigger2DataBySet: PropTypes.object,
+  setTrigger2DataBySet: PropTypes.func,
 };
 
 export default Header;
