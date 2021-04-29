@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Redirect } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { Button, Form, FormGroup, Label, Input } from 'reactstrap';
+import PropTypes from 'prop-types';
 
 import { GET_USER_STATUS } from '../../store/actions/types';
 import { login } from '../../apis';
 
-const SignIn = () => {
+const SignIn = (props) => {
+  const { setLoginStatus } = props;
   const dispatch = useDispatch();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +28,7 @@ const SignIn = () => {
     };
     const response = await login(params);
     if (response.data.success) {
+      setLoginStatus(true);
       localStorage.setItem('isLoggedIn', true);
       localStorage.setItem('userData', JSON.stringify(response.data.data));
       dispatch({ type: GET_USER_STATUS, payload: true });
@@ -100,6 +103,10 @@ const SignIn = () => {
       </div>
     );
   }
+};
+
+SignIn.propTypes = {
+  setLoginStatus: PropTypes.func,
 };
 
 export default SignIn;

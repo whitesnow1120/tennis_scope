@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
-// import { useDispatch } from 'react-redux';
 import { Helmet } from 'react-helmet';
-import { css } from '@emotion/core';
-import BounceLoader from 'react-spinners/BounceLoader';
 import PropTypes from 'prop-types';
 
-// import { GET_OPENED_DETAIL } from '../store/actions/types';
-import { filterByRankOdd, addInplayScores, filterTrigger1, openedDetailExistInNewMathes } from '../utils';
+import { filterByRankOdd, addInplayScores, filterTrigger1 } from '../utils';
 import { getInplayData } from '../apis';
 import MatchItem from '../components/MatchItem';
 import {
@@ -24,8 +20,9 @@ const Trigger1 = (props) => {
     filterChanged,
     setFilterChanged,
     trigger1DataBySet,
+    mobileMatchClicked,
+    setMobileMatchClicked,
   } = props;
-  // const dispatch = useDispatch();
   const [openedDetail, setOpenedDetail] = useState({
     p1_id: '',
     p2_id: '',
@@ -44,6 +41,7 @@ const Trigger1 = (props) => {
     set2: [],
     set3: [],
   });
+  const [matchCnt, setMatchCnt] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const sliderChanged = JSON.parse(localStorage.getItem('sliderChanged'));
@@ -53,12 +51,6 @@ const Trigger1 = (props) => {
   const defaultValues = sliderChanged === null ? SLIDER_RANGE : sliderChanged;
   const domain = SLIDER_RANGE;
   const [values, setValues] = useState(defaultValues.slice());
-
-  const override = css`
-    display: block;
-    margin: 0 auto;
-    border-color: red;
-  `;
 
   const handleSliderChange = (value) => {
     setOpenedDetail({
@@ -172,25 +164,12 @@ const Trigger1 = (props) => {
         activeRank,
         values
       );
-      if (
-        !openedDetailExistInNewMathes(
-          filteredTriggerByRankOdd['set1'],
-          openedDetail
-        ) &&
-        !openedDetailExistInNewMathes(
-          filteredTriggerByRankOdd['set2'],
-          openedDetail
-        ) &&
-        !openedDetailExistInNewMathes(
-          filteredTriggerByRankOdd['set3'],
-          openedDetail
-        )
-      ) {
-        setOpenedDetail({
-          p1_id: '',
-          p2_id: '',
-        });
-      }
+
+      setMatchCnt(
+        filteredTriggerByRankOdd['set1'].length +
+          filteredTriggerByRankOdd['set2'].length +
+          filteredTriggerByRankOdd['set3'].length
+      );
       setTrigger1FilteredDataBySet(filteredTriggerByRankOdd);
       /* --- set filtered trigger data by Rankd and odd --- end --- */
     };
@@ -218,12 +197,14 @@ const Trigger1 = (props) => {
       </Helmet>
       {loading && (
         <div className="loading">
-          <div className="loader">
-            <BounceLoader loading={loading} css={override} size={100} />
-          </div>
+          <div className="loader"></div>
         </div>
       )}
-      <section className="section trigger">
+      <section
+        className={`section trigger ${
+          mobileMatchClicked ? 'hide-filter' : ''
+        } `}
+      >
         <div className="container-fluid">
           <div className="row header-filter-group">
             <RankButtonGroup
@@ -237,7 +218,7 @@ const Trigger1 = (props) => {
               step={SLIDER_STEP}
             />
           </div>
-          <div className="row mt-4">
+          <div className="row matchlist-container">
             <div className="col-12 trigger1">
               <div className="trigger1-set">
                 <span>1st SET TRIGGER</span>
@@ -247,7 +228,7 @@ const Trigger1 = (props) => {
             {trigger1FilteredDataBySet['set1'].length > 0 ? (
               trigger1FilteredDataBySet['set1'].map((item) => (
                 <MatchItem
-                  key={item.id}
+                  key={item.event_id}
                   item={item}
                   type="trigger1"
                   triggerSet={1}
@@ -255,13 +236,16 @@ const Trigger1 = (props) => {
                   setLoading={setLoading}
                   openedDetail={openedDetail}
                   setOpenedDetail={setOpenedDetail}
+                  mobileMatchClicked={mobileMatchClicked}
+                  setMobileMatchClicked={setMobileMatchClicked}
+                  matchCnt={matchCnt}
                 />
               ))
             ) : (
               <></>
             )}
           </div>
-          <div className="row mt-4">
+          <div className="row matchlist-container">
             <div className="col-12 trigger1">
               <div className="trigger1-set">
                 <span>2nd SET TRIGGER</span>
@@ -271,7 +255,7 @@ const Trigger1 = (props) => {
             {trigger1FilteredDataBySet['set2'].length > 0 ? (
               trigger1FilteredDataBySet['set2'].map((item) => (
                 <MatchItem
-                  key={item.id}
+                  key={item.event_id}
                   item={item}
                   type="trigger1"
                   triggerSet={2}
@@ -279,13 +263,16 @@ const Trigger1 = (props) => {
                   setLoading={setLoading}
                   openedDetail={openedDetail}
                   setOpenedDetail={setOpenedDetail}
+                  mobileMatchClicked={mobileMatchClicked}
+                  setMobileMatchClicked={setMobileMatchClicked}
+                  matchCnt={matchCnt}
                 />
               ))
             ) : (
               <></>
             )}
           </div>
-          <div className="row mt-4">
+          <div className="row matchlist-container">
             <div className="col-12 trigger1">
               <div className="trigger1-set">
                 <span>3rd SET TRIGGER</span>
@@ -303,6 +290,9 @@ const Trigger1 = (props) => {
                   setLoading={setLoading}
                   openedDetail={openedDetail}
                   setOpenedDetail={setOpenedDetail}
+                  mobileMatchClicked={mobileMatchClicked}
+                  setMobileMatchClicked={setMobileMatchClicked}
+                  matchCnt={matchCnt}
                 />
               ))
             ) : (
@@ -320,6 +310,8 @@ Trigger1.propTypes = {
   filterChanged: PropTypes.bool,
   setFilterChanged: PropTypes.func,
   trigger1DataBySet: PropTypes.object,
+  mobileMatchClicked: PropTypes.bool,
+  setMobileMatchClicked: PropTypes.func,
 };
 
 export default Trigger1;

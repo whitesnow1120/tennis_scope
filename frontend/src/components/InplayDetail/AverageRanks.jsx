@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-// import { useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 
 const AverageRanks = (props) => {
   const { player_id, filteredRelationData } = props;
-  // const { filteredRelationData } = useSelector((state) => state.tennis);
   const [raw, setRAW] = useState(0);
   const [ral, setRAL] = useState(0);
 

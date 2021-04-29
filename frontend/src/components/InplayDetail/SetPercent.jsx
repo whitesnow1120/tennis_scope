@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-// import { useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 
 const SetPercent = (props) => {
   const { player_id, filteredRelationData } = props;
-  // const { filteredRelationData } = useSelector((state) => state.tennis);
 
   const [wwCount, setWWCount] = useState(0);
   const [wlCount, setWLCount] = useState(0);
@@ -64,10 +62,10 @@ const SetPercent = (props) => {
             <span>{'L>W'}</span>
           </div>
           <div>
-            <span>{wlCount}</span>
+            <span>{lwCount}</span>
           </div>
           <div>
-            <span>[{wlPercent}%]</span>
+            <span>[{lwPercent}%]</span>
           </div>
         </div>
       </div>
@@ -77,10 +75,10 @@ const SetPercent = (props) => {
             <span>{'W>L'}</span>
           </div>
           <div>
-            <span>{lwCount}</span>
+            <span>{wlCount}</span>
           </div>
           <div>
-            <span>[{lwPercent}%]</span>
+            <span>[{wlPercent}%]</span>
           </div>
         </div>
         <div className="lose-lose">

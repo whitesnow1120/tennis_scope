@@ -19,7 +19,7 @@ class UpdateDB extends Command
      *
      * @var string
      */
-    protected $description = 'Update Tennis DB every 10 minutes';
+    protected $description = 'Update Tennis DB every 5 minutes';
 
     /**
      * Create a new command instance.
@@ -36,7 +36,6 @@ class UpdateDB extends Command
      */
     public function handle()
     {
-        Helper::updateDB();
-        // Helper::preCalculation();
+        Helper::updateDB(false, false, 3);
     }
 }

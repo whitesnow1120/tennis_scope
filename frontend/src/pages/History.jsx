@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
-import { css } from '@emotion/core';
-import BounceLoader from 'react-spinners/BounceLoader';
 import PropTypes from 'prop-types';
 
-import { filterByRankOdd, openedDetailExistInNewMathes } from '../utils';
+import { filterByRankOdd, calculatePerformance } from '../utils';
 import { getHistoryData } from '../apis';
 import {
   SITE_SEO_TITLE,
@@ -17,22 +15,35 @@ import MatchItem from '../components/MatchItem';
 import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
 import CustomCheckbox from '../components/CustomCheckbox';
+import LoadingMatchList from '../components/LoadingMatchList';
+import PerformanceStatistics from '../components/PerformanceStatistics';
 
 const History = (props) => {
-  const { filterChanged, setFilterChanged, roboPicks, setRoboPicks } = props;
+  const {
+    filterChanged,
+    setFilterChanged,
+    roboPicks,
+    setRoboPicks,
+    mobileMatchClicked,
+    setMobileMatchClicked,
+  } = props;
   const [openedDetail, setOpenedDetail] = useState({
     p1_id: '',
     p2_id: '',
   });
-  const [historyDate, setHistoryDate] = useState(new Date());
+  let historyDate = localStorage.getItem('historyDate');
+  historyDate = historyDate !== null ? historyDate : new Date();
+  const [date, setDate] = useState(historyDate);
   const rankFilter = localStorage.getItem('rankFilter');
   const [activeRank, setActiveRank] = useState(
     rankFilter === null ? '1' : rankFilter
   );
+  const [loadingMatchList, setLoadingMatchList] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const [historyFilteredData, setHistoryFilteredData] = useState([]);
-  const [winners, setWinners] = useState([]);
+  const [winners, setWinners] = useState();
   const [loading, setLoading] = useState(false);
+  const [performanceSpecificDay, setPerformanceSpecificDay] = useState();
 
   const sliderChanged = JSON.parse(localStorage.getItem('sliderChanged'));
   const [sliderValue, setSliderValue] = useState(
@@ -41,11 +52,6 @@ const History = (props) => {
   const defaultValues = sliderChanged === null ? SLIDER_RANGE : sliderChanged;
   const domain = SLIDER_RANGE;
   const [values, setValues] = useState(defaultValues.slice());
-  const override = css`
-    display: block;
-    margin: 0 auto;
-    border-color: red;
-  `;
 
   const handleSliderChange = (value) => {
     setOpenedDetail({
@@ -63,38 +69,52 @@ const History = (props) => {
 
   useEffect(() => {
     const loadHistoryData = async () => {
+      let historyDate = localStorage.getItem('historyDate');
+      historyDate = historyDate !== null ? historyDate : new Date();
       const response = await getHistoryData(historyDate);
       if (response.status === 200) {
         setWinners(response.data.winners);
         const data = response.data.history_detail;
         const filteredData = filterByRankOdd(data, activeRank, values);
+        const performance = calculatePerformance(
+          filteredData,
+          response.data.winners
+        );
+        setPerformanceSpecificDay(performance);
         setHistoryData(data);
         setHistoryFilteredData(filteredData);
-        if (!openedDetailExistInNewMathes(filteredData, openedDetail)) {
-          setOpenedDetail({
-            p1_id: '',
-            p2_id: '',
-          });
-        }
       } else {
         setHistoryData([]);
       }
+      setLoadingMatchList(false);
       // Call the async function again
       setTimeout(function () {
         const pathName = window.location.pathname;
-        if (pathName.includes('history')) {
+        let historyDate = localStorage.getItem('historyDate');
+        historyDate = historyDate !== null ? historyDate : new Date();
+        if (
+          pathName.includes('history') &&
+          historyDate.toString().slice(0, 15) ===
+            new Date().toString().slice(0, 15)
+        ) {
           loadHistoryData();
         }
       }, 1000 * 60 * 5);
     };
 
+    setPerformanceSpecificDay(null);
+    setLoadingMatchList(true);
     loadHistoryData();
-  }, [historyDate]);
+  }, [date]);
 
   useEffect(() => {
     setFilterChanged(!filterChanged);
     const filteredData = filterByRankOdd(historyData, activeRank, values);
     setHistoryFilteredData(filteredData);
+    if (winners !== undefined) {
+      const performance = calculatePerformance(filteredData, winners);
+      setPerformanceSpecificDay(performance);
+    }
   }, [activeRank, sliderValue]);
 
   return (
@@ -107,19 +127,18 @@ const History = (props) => {
       </Helmet>
       {loading && (
         <div className="loading">
-          <div className="loader">
-            <BounceLoader loading={loading} css={override} size={100} />
-          </div>
+          <div className="loader"></div>
         </div>
       )}
-      <section className="section history">
+      <section
+        className={`section history ${
+          mobileMatchClicked ? 'hide-filter' : ''
+        } `}
+      >
         <div className="container-fluid">
-          <div className="history-header">
+          <div className="row header-filter-group">
             <div className="datepicker-container">
-              <CustomDatePicker
-                setHistoryDate={setHistoryDate}
-                historyDate={historyDate}
-              />
+              <CustomDatePicker setHistoryDate={setDate} historyDate={date} />
             </div>
             <RankButtonGroup
               activeRank={activeRank}
@@ -137,26 +156,36 @@ const History = (props) => {
               isChecked={roboPicks}
               setRoboPicks={setRoboPicks}
             />
+            <PerformanceStatistics statistics={performanceSpecificDay} />
           </div>
-          <div className="row mt-4">
-            {historyFilteredData.length > 0 ? (
-              historyFilteredData.map((item) => (
-                <MatchItem
-                  key={item.id}
-                  item={item}
-                  type="history"
-                  loading={loading}
-                  setLoading={setLoading}
-                  openedDetail={openedDetail}
-                  setOpenedDetail={setOpenedDetail}
-                  winners={winners}
-                  roboPicks={roboPicks}
-                />
-              ))
-            ) : (
-              <></>
-            )}
-          </div>
+          {!loadingMatchList ? (
+            <div className="row matchlist-container">
+              {historyFilteredData.length > 0 ? (
+                historyFilteredData.map((item) => (
+                  <MatchItem
+                    key={item.event_id}
+                    item={item}
+                    type="history"
+                    loading={loading}
+                    setLoading={setLoading}
+                    openedDetail={openedDetail}
+                    setOpenedDetail={setOpenedDetail}
+                    winners={winners}
+                    roboPicks={roboPicks}
+                    mobileMatchClicked={mobileMatchClicked}
+                    setMobileMatchClicked={setMobileMatchClicked}
+                    matchCnt={historyFilteredData.length}
+                  />
+                ))
+              ) : (
+                <></>
+              )}
+            </div>
+          ) : (
+            <div className="row matchlist-container">
+              <LoadingMatchList />
+            </div>
+          )}
         </div>
       </section>
     </>
@@ -168,6 +197,8 @@ History.propTypes = {
   setFilterChanged: PropTypes.func,
   roboPicks: PropTypes.bool,
   setRoboPicks: PropTypes.func,
+  mobileMatchClicked: PropTypes.bool,
+  setMobileMatchClicked: PropTypes.func,
 };
 
 export default History;

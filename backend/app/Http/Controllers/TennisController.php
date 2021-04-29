@@ -32,21 +32,16 @@ class TennisController extends Controller
         }
         $times = Helper::getTimePeriod($date);
         if ($type == 0) { // upcoming
-            $matches_data = DB::table($match_table_name)
-                            ->where('time_status', 0)
-                            ->where('time', ">", $times[0])
+            $matches_data = DB::table("t_upcoming_matches")
                             ->orderBy('time')
                             ->get();  
         } elseif ($type == 1) { // in play
-            $matches_data = DB::table($match_table_name)
-                            ->where('time_status', 1)
-                            ->where('time', ">", $times[0])
+            $matches_data = DB::table("t_inplay_matches")
                             ->orderBy('time')
                             ->get();
         } elseif ($type == 3) { // ended
             if ($date == $current_date) {
                 $matches_data = DB::table($match_table_name)
-                                ->where('time_status', 3)
                                 ->where('scores', '<>', NULL)
                                 ->where('scores', '<>', '')
                                 ->whereBetween('time', [$times[0], $times[1]])
@@ -54,7 +49,6 @@ class TennisController extends Controller
                                 ->get();
             } else {
                 $matches_data = DB::table($match_table_name)
-                                ->where('time_status', 3)
                                 ->where('scores', '<>', NULL)
                                 ->where('scores', '<>', '')
                                 ->whereBetween('time', [$times[0], $times[1]])
@@ -64,7 +58,7 @@ class TennisController extends Controller
             
             $matches_array = array();
             array_push($matches_array, $matches_data);
-            return Helper::getMatchesResponse($matches_array, $players);
+            return Helper::getMatchesResponse($matches_array, $players, 3);
         }
 
         $upcoming_inplay_data = array();
@@ -120,7 +114,6 @@ class TennisController extends Controller
         foreach ($history_tables as $table) {
             // filtering by player ids (player1)
             $match_table_subquery_1 = DB::table($table->tablename)
-                                        ->where('time_status', 3)
                                         ->where('scores', '<>', NULL)
                                         ->where('scores', '<>', '')
                                         ->where(function($query) use ($player1_id) {
@@ -129,7 +122,6 @@ class TennisController extends Controller
                                         });
             // filtering by player ids (player2)
             $match_table_subquery_2 = DB::table($table->tablename)
-                                        ->where('time_status', 3)
                                         ->where('scores', '<>', NULL)
                                         ->where('scores', '<>', '')
                                         ->where(function($query) use ($player2_id) {
@@ -141,8 +133,8 @@ class TennisController extends Controller
             array_push($matches2_array, $match_table_subquery_2->get());
         }
 
-		$matches1 = Helper::getMatchesResponse($matches1_array, $players);
-		$matches2 = Helper::getMatchesResponse($matches2_array, $players);
+		$matches1 = Helper::getMatchesResponse($matches1_array, $players, 3);
+		$matches2 = Helper::getMatchesResponse($matches2_array, $players, 3);
 
 		// add sets
         $matches1_set = Helper::getPlayersSubDetail($matches1, $player1_id);
@@ -541,64 +533,14 @@ class TennisController extends Controller
     public function robots(Request $request) {
         try {
             $robot_tables = [
-                // "t_backtest_bots_brw_10",
-                // "t_backtest_bots_brw_15",
-                // "t_backtest_bots_brw_20",
-                // "t_backtest_bots_brw_25",
-                // "t_backtest_bots_brw_30",
-                // "t_backtest_bots_brw_10_surface",
-                // "t_backtest_bots_brw_15_surface",
-                // "t_backtest_bots_brw_20_surface",
-                // "t_backtest_bots_brw_25_surface",
-                // "t_backtest_bots_brw_30_surface",
-
-                // "t_backtest_bots_brl_10",
-                // "t_backtest_bots_brl_15",
-                // "t_backtest_bots_brl_20",
-                // "t_backtest_bots_brl_25",
-                // "t_backtest_bots_brl_30",
-                // "t_backtest_bots_brl_10_surface",
-                // "t_backtest_bots_brl_15_surface",
-                // "t_backtest_bots_brl_20_surface",
-                // "t_backtest_bots_brl_25_surface",
-                // "t_backtest_bots_brl_30_surface",
-
-                // "t_backtest_bots_gah_10",
-                // "t_backtest_bots_gah_15",
-                // "t_backtest_bots_gah_20",
-                // "t_backtest_bots_gah_25",
-                // "t_backtest_bots_gah_30",
-                // "t_backtest_bots_gah_10_surface",
-                // "t_backtest_bots_gah_15_surface",
-                // "t_backtest_bots_gah_20_surface",
-                // "t_backtest_bots_gah_25_surface",
-                // "t_backtest_bots_gah_30_surface",
-
-                // "t_backtest_bots_brw_gah_10",
-                // "t_backtest_bots_brw_gah_15",
-                // "t_backtest_bots_brw_gah_20",
-                // "t_backtest_bots_brw_gah_25",
-                // "t_backtest_bots_brw_gah_30",
-                // "t_backtest_bots_brw_gah_10_surface",
-                // "t_backtest_bots_brw_gah_15_surface",
-                // "t_backtest_bots_brw_gah_20_surface",
-                // "t_backtest_bots_brw_gah_25_surface",
-                // "t_backtest_bots_brw_gah_30_surface",
-
-                // "t_backtest_bots_brw_gah_odd_10",
-                // "t_backtest_bots_brw_gah_odd_20",
-
                 "t_backtest_bots_brw_gah_rank_10",
                 "t_backtest_bots_brw_gah_rank_20",
-
-                // "t_backtest_bots_brw_gah_rank_h_10",
-			    // "t_backtest_bots_brw_gah_rank_h_20",
-
-                // "t_backtest_bots_brw_gah_rank_h_mon_tue_10",
-			    // "t_backtest_bots_brw_gah_rank_h_mon_tue_20",
-
-                // "t_backtest_bots_brw_gah_odd_unranked_10",
-                // "t_backtest_bots_brw_gah_odd_unranked_20",
+                "t_backtest_bots_brw_gah_balance_rank_10",
+                "t_backtest_bots_brw_gah_balance_rank_20",
+                "t_backtest_bots_balance_rank_10",
+                "t_backtest_bots_balance_rank_20",
+                "t_backtest_bots_balance_unrank_10",
+                "t_backtest_bots_balance_unrank_20",
             ];
 
             $robots = array();

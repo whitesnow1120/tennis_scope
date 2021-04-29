@@ -19,7 +19,7 @@ const BreakHoldDetail = (props) => {
           <span>GAH</span>
           <span>{gah}</span>
         </div>
-        <div className="games-hold">
+        <div className="games-in-row">
           <span>GIR</span>
           <span>{gra}</span>
         </div>
@@ -33,7 +33,6 @@ BreakHoldDetail.propTypes = {
   brl: PropTypes.number,
   gah: PropTypes.number,
   gra: PropTypes.string,
-  children: PropTypes.any,
 };
 
 export default BreakHoldDetail;

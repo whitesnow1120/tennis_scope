@@ -11,7 +11,7 @@ const PageNotFound = () => {
         <title>Page Not Found - {SITE_NAME}</title>
         <meta property="og:title" content={`Page Not Found - ${SITE_NAME}`} />
       </Helmet>
-      <div className="container mt-5 mb-5 pt-5 pb-5">
+      <div className="container mt-5 mb-5 pt-5 pb-5 page-not-found">
         <div className="row justify-content-center mt-5 mb-5">
           <div className="col-lg-8 col-md-12 text-center mt-5 mb-5">
             <div className="text-uppercase mt-4 display-3">Oh! no</div>

@@ -8,7 +8,7 @@ const PrivacyPolicy = () => {
       <Hero title="Privacy" />
       <div className="container pb-5 description">
         <div className="row">
-          <div className="col-12 text-center">
+          <div className="col-12 text-center sub-title">
             <h1>Privacy policy</h1>
           </div>
           <div className="col-lg-12 col-md-12 col-sm-12 mt-4 padding-bottom">
@@ -24,7 +24,9 @@ const PrivacyPolicy = () => {
               be assured that it will only be used in accordance with this
               privacy statement.
             </p>
-            <h4>The type of personal information we collect</h4>
+            <h4 className="personal-information-collect">
+              The type of personal information we collect
+            </h4>
             <p>
               We collect certain personal information about visitors and users
               of Tenniscope.com.
@@ -38,7 +40,7 @@ const PrivacyPolicy = () => {
               testimonials, content you send us (such as descriptions of betting
               strategies) and web analytics data.
             </p>
-            <h4>
+            <h4 className="non-personal-identification">
               How we collect non-personal identification information and
               personal information
             </h4>

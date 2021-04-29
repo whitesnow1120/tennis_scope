@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-// import { useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 
 import BreakHoldDetail from './BreakHoldDetail';
@@ -7,8 +6,12 @@ import SetPercent from './SetPercent';
 import MatchDetail from './MatchDetail';
 
 const PlayerDetail = (props) => {
-  const { player1_id, player2_id, filteredRelationData } = props;
-  // const { filteredRelationData } = useSelector((state) => state.tennis);
+  const {
+    player1_id,
+    player2_id,
+    filteredRelationData,
+    showMoreFilters,
+  } = props;
   const [player1BRW, setPlayer1BRW] = useState(0);
   const [player1BRL, setPlayer1BRL] = useState(0);
   const [player1GAH, setPlayer1GAH] = useState(0);
@@ -44,45 +47,53 @@ const PlayerDetail = (props) => {
 
   return (
     <>
-      <div className="player-detail">
-        <div className="player-detail-left">
-          <BreakHoldDetail
-            brw={player1BRW}
-            brl={player1BRL}
-            gah={player1GAH}
-            gra={player1GRA}
-          />
-        </div>
-        <div className="player-detail-right">
-          <BreakHoldDetail
-            brw={player2BRW}
-            brl={player2BRL}
-            gah={player2GAH}
-            gra={player2GRA}
-          />
-        </div>
-      </div>
-      <div className="set-percent">
-        <div className="set-percent-left">
-          <SetPercent
-            player_id={player1_id}
-            filteredRelationData={filteredRelationData}
-          />
-        </div>
-        <div className="set-percent-right">
-          <SetPercent
-            player_id={player2_id}
-            filteredRelationData={filteredRelationData}
-          />
-        </div>
-      </div>
-      <div className="match-details">
+      {showMoreFilters && (
+        <>
+          <div className="player-detail-container">
+            <div className="player-detail">
+              <div className="player-detail-left">
+                <BreakHoldDetail
+                  brw={player1BRW}
+                  brl={player1BRL}
+                  gah={player1GAH}
+                  gra={player1GRA}
+                />
+              </div>
+              <div className="player-detail-right">
+                <BreakHoldDetail
+                  brw={player2BRW}
+                  brl={player2BRL}
+                  gah={player2GAH}
+                  gra={player2GRA}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="set-percent">
+            <div className="set-percent-left">
+              <SetPercent
+                player_id={player1_id}
+                filteredRelationData={filteredRelationData}
+              />
+            </div>
+            <div className="set-percent-right">
+              <SetPercent
+                player_id={player2_id}
+                filteredRelationData={filteredRelationData}
+              />
+            </div>
+          </div>
+        </>
+      )}
+      <div
+        className={`match-details ${!showMoreFilters ? 'hided-filters' : ''}`}
+      >
         <div className="match-details-left">
           {filteredRelationData != undefined &&
             player1_id in filteredRelationData &&
             filteredRelationData[player1_id].length > 0 &&
             filteredRelationData[player1_id].map((match, index) => (
-              <MatchDetail key={index} match={match} />
+              <MatchDetail key={index} match={match} player="1" />
             ))}
         </div>
         <div className="match-details-right">
@@ -90,7 +101,7 @@ const PlayerDetail = (props) => {
             player2_id in filteredRelationData &&
             filteredRelationData[player2_id].length > 0 &&
             filteredRelationData[player2_id].map((match, index) => (
-              <MatchDetail key={index} match={match} />
+              <MatchDetail key={index} match={match} player="2" />
             ))}
         </div>
       </div>
@@ -102,6 +113,7 @@ PlayerDetail.propTypes = {
   player1_id: PropTypes.number,
   player2_id: PropTypes.number,
   filteredRelationData: PropTypes.object,
+  showMoreFilters: PropTypes.bool,
 };
 
 export default PlayerDetail;

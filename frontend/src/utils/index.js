@@ -237,8 +237,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   let totalPlayerGAH = 0;
   let totalPlayerGIR = [];
   let ww = 0;
-  let wl = 0;
   let lw = 0;
+  let wl = 0;
   let ll = 0;
   let raw = [];
   let ral = [];
@@ -285,8 +285,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     totalPlayerBRL += sumBRL;
     totalPlayerGAH += sumGAH;
     const pWW = JSON.parse(item['p_ww']);
-    const pWL = JSON.parse(item['p_wl']);
     const pLW = JSON.parse(item['p_lw']);
+    const pWL = JSON.parse(item['p_wl']);
     const pLL = JSON.parse(item['p_ll']);
     const oRanking = item['o_ranking'] === null ? 501 : item['o_ranking'];
 
@@ -302,13 +302,13 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
 
     if (filterSet1 === 'ALL') {
       ww += totalWW;
-      wl += totalLW;
-      lw += totalWL;
+      lw += totalLW;
+      wl += totalWL;
       ll += totalLL;
     } else {
       ww += parseInt(pWW[parseInt(filterSet1) - 1]);
-      wl += parseInt(pWL[parseInt(filterSet1) - 1]);
       lw += parseInt(pLW[parseInt(filterSet1) - 1]);
+      wl += parseInt(pWL[parseInt(filterSet1) - 1]);
       ll += parseInt(pLL[parseInt(filterSet1) - 1]);
     }
 
@@ -330,8 +330,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     pGAH: totalPlayerGAH,
     pGRA: pGRA,
     pWW: ww,
-    pWL: wl,
     pLW: lw,
+    pWL: wl,
     pLL: ll,
     RAW: raw,
     RAL: ral,
@@ -343,8 +343,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
   totalPlayerGAH = 0;
   totalPlayerGIR = [];
   ww = 0;
-  wl = 0;
   lw = 0;
+  wl = 0;
   ll = 0;
   raw = [];
   ral = [];
@@ -389,8 +389,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     totalPlayerBRL += sumBRL;
     totalPlayerGAH += sumGAH;
     const pWW = JSON.parse(item['p_ww']);
-    const pWL = JSON.parse(item['p_wl']);
     const pLW = JSON.parse(item['p_lw']);
+    const pWL = JSON.parse(item['p_wl']);
     const pLL = JSON.parse(item['p_ll']);
     const oRanking = item['o_ranking'] === null ? 501 : item['o_ranking'];
 
@@ -406,13 +406,13 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
 
     if (filterSet2 === 'ALL') {
       ww += totalWW;
-      wl += totalLW;
-      lw += totalWL;
+      lw += totalLW;
+      wl += totalWL;
       ll += totalLL;
     } else {
       ww += parseInt(pWW[parseInt(filterSet2) - 1]);
-      wl += parseInt(pWL[parseInt(filterSet2) - 1]);
       lw += parseInt(pLW[parseInt(filterSet2) - 1]);
+      wl += parseInt(pWL[parseInt(filterSet2) - 1]);
       ll += parseInt(pLL[parseInt(filterSet2) - 1]);
     }
 
@@ -434,8 +434,8 @@ export const filterData = (player1_id, player2_id, relationData, filters) => {
     pGAH: totalPlayerGAH,
     pGRA: pGRA,
     pWW: ww,
-    pWL: wl,
     pLW: lw,
+    pWL: wl,
     pLL: ll,
     RAW: raw,
     RAL: ral,
@@ -892,16 +892,15 @@ export const calculateRobotPercent = (robots) => {
   });
 
   const rules = [
-    // percents.slice(0, 10),
-    // percents.slice(10, 20),
-    // percents.slice(20, 30),
-    // percents.slice(30, 40),
+    percents.slice(0, 2),
+    percents.slice(2, 4),
+    percents.slice(4, 6),
+    percents.slice(6, 8),
     // percents.slice(40, 42),
     // percents.slice(42, 44),
     // percents.slice(44, 46),
     // percents.slice(46, 48),
     // percents.slice(48, 50),
-    percents.slice(0, 2),
   ];
   return rules;
 };
@@ -937,5 +936,49 @@ export const checkWinner = (match, winners) => {
   }
   return {
     type: -1,
+  };
+};
+
+/**
+ * Calculate the performace of the specific day (for history page)
+ * @param { array } winners
+ * @returns object
+ */
+export const calculatePerformance = (data, winners) => {
+  let filteredWinners = [];
+  if (winners.length === 0) {
+    return {
+      correct: 0,
+      total: 0,
+      percent: 0,
+    };
+  }
+
+  data.map((d) => {
+    const winner = winners.filter((w) => d['event_id'] === w['event_id']);
+    if (winner.length > 0) {
+      filteredWinners.push(winner[0]);
+    }
+  });
+
+  const total_cnt = filteredWinners.length;
+  if (total_cnt === 0) {
+    return {
+      correct: 0,
+      total: 0,
+      percent: 0,
+    };
+  }
+  let correct_cnt = 0;
+  filteredWinners.map((item) => {
+    if (item['correct'] === 1) {
+      correct_cnt++;
+    }
+  });
+  const percent = Math.round((correct_cnt / total_cnt) * 100);
+  return {
+    correct: correct_cnt,
+    total: total_cnt,
+    percent: percent,
   };
 };

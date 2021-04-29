@@ -152,7 +152,6 @@ export class Handle extends Component {
             width: 26,
             height: 42,
             cursor: 'pointer',
-            // border: '1px solid grey',
             backgroundColor: 'none',
           }}
           {...getHandleProps(id, {

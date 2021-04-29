@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Redirect } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 import useSound from 'use-sound';
 
 import { SLIDER_RANGE } from '../common/Constants';
-import { getInplayData, getInplayScoreData } from '../apis';
+import { getInplayData, getInplayScoreData, getHistoryData } from '../apis';
 import {
   filterByRankOdd,
   addInplayScores,
   filterTrigger1,
   itemNotExist,
+  calculatePerformance,
 } from '../utils';
-import { GET_USER_STATUS } from '../store/actions/types';
 import BrowserButtonListener from './BrowserButtonListener';
 import logo from '../assets/img/logo.png';
 import ding from '../assets/ding.mp3';
 
 const Header = (props) => {
   const {
+    setOpen,
     activeMenu,
     setActiveMenu,
     filterChanged,
@@ -27,8 +28,9 @@ const Header = (props) => {
     setTrigger1DataBySet,
     trigger2DataBySet,
     setTrigger2DataBySet,
+    setPerformanceToday,
+    handleLogout,
   } = props;
-  const dispatch = useDispatch();
   const { userLoggedIn } = useSelector((state) => state.tennis);
   const loggedIn = localStorage.getItem('isLoggedIn');
   const [triggerData, setTriggerData] = useState([]);
@@ -41,8 +43,27 @@ const Header = (props) => {
   const [played1, setPlayed1] = useState(false);
   const [played2, setPlayed2] = useState(false);
 
+  const [winners, setWinners] = useState();
+  const [todayHistoryDetail, setTodayHistoryDetail] = useState();
+
   // check trigger matches status
   useEffect(() => {
+    // Load performance of today
+    const loadPerformanceToday = async () => {
+      const response = await getHistoryData(Date());
+      if (response.status === 200) {
+        setTodayHistoryDetail(response.data.history_detail);
+        setWinners(response.data.winners);
+      } else {
+        setPerformanceToday(null);
+      }
+      // Call the async function again
+      setTimeout(function () {
+        loadPerformanceToday();
+      }, 1000 * 60 * 5);
+    };
+
+    // Load trigger data
     const loadTriggerData = async () => {
       const response = await getInplayData();
       if (response.status === 200) {
@@ -56,22 +77,46 @@ const Header = (props) => {
       }, 1000 * 60 * 5);
     };
 
+    loadPerformanceToday();
     loadTriggerData();
   }, []);
 
+  useEffect(() => {
+    if (winners === undefined) {
+      setPerformanceToday(null);
+    } else {
+      const rankFilter = localStorage.getItem('rankFilter');
+      const activeRank = rankFilter === null ? '1' : rankFilter;
+      const sliderChanged = JSON.parse(localStorage.getItem('sliderChanged'));
+      const defaultValues =
+        sliderChanged === null ? SLIDER_RANGE : sliderChanged;
+      const values = defaultValues.slice();
+
+      const filteredperformanceDataByRankOdd = filterByRankOdd(
+        todayHistoryDetail,
+        activeRank,
+        values
+      );
+      const performance = calculatePerformance(
+        filteredperformanceDataByRankOdd,
+        winners
+      );
+      setPerformanceToday(performance);
+    }
+  }, [winners, filterChanged]);
+
   // update matches every 4 seconds
   useEffect(() => {
+    const rankFilter = localStorage.getItem('rankFilter');
+    const activeRank = rankFilter === null ? '1' : rankFilter;
+    const sliderChanged = JSON.parse(localStorage.getItem('sliderChanged'));
+    const defaultValues = sliderChanged === null ? SLIDER_RANGE : sliderChanged;
+    const values = defaultValues.slice();
+
     const loadTriggerScoreData = async () => {
       const response = await getInplayScoreData();
       if (response.status === 200) {
         setInplayScoreData(response.data);
-        const rankFilter = localStorage.getItem('rankFilter');
-        const activeRank = rankFilter === null ? '1' : rankFilter;
-        const sliderChanged = JSON.parse(localStorage.getItem('sliderChanged'));
-        const defaultValues =
-          sliderChanged === null ? SLIDER_RANGE : sliderChanged;
-        const values = defaultValues.slice();
-
         const filteredDataByRankOdd = filterByRankOdd(
           triggerData['inplay_detail'],
           activeRank,
@@ -165,6 +210,7 @@ const Header = (props) => {
     ) {
       loadTriggerScoreData();
     }
+
     return () => {
       window.clearInterval(timer);
     };
@@ -203,6 +249,7 @@ const Header = (props) => {
   }, [browserButtonPressed]);
 
   const handleMenuItemClicked = (menu) => {
+    setOpen(false);
     setActiveMenu(menu);
     if (menu === 4) {
       setPlayed1(false);
@@ -211,11 +258,6 @@ const Header = (props) => {
       setPlayed2(false);
       setNewTrigger2(false);
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.clear();
-    dispatch({ type: GET_USER_STATUS, payload: false });
   };
 
   return (
@@ -227,75 +269,121 @@ const Header = (props) => {
           />
           <div className="container-fluid">
             <ul className="navigation-menu float-left">
-              <li>
-                <Link
-                  to="/"
-                  className="logo"
-                  onClick={() => handleMenuItemClicked(0)}
+              <div>
+                <li>
+                  <Link
+                    to="/"
+                    className="logo"
+                    onClick={() => handleMenuItemClicked(0)}
+                  >
+                    <img src={logo} alt="logo" />
+                  </Link>
+                </li>
+                <li
+                  className={
+                    activeMenu === 1
+                      ? 'navigation-item active-menu'
+                      : 'navigation-item'
+                  }
                 >
-                  <img src={logo} alt="logo" />
-                </Link>
-              </li>
-              <li className="navigation-item">
-                <Link
-                  className={activeMenu === 1 ? ' active' : ''}
-                  to={`/inplay`}
-                  onClick={() => handleMenuItemClicked(1)}
+                  <Link
+                    className={activeMenu === 1 ? ' active' : ''}
+                    to={`/inplay`}
+                    onClick={() => handleMenuItemClicked(1)}
+                  >
+                    In Play
+                  </Link>
+                </li>
+                <li
+                  className={
+                    activeMenu === 2
+                      ? 'navigation-item active-menu'
+                      : 'navigation-item'
+                  }
                 >
-                  In Play
-                </Link>
-              </li>
-              <li className="navigation-item">
-                <Link
-                  className={activeMenu === 2 ? 'active' : ''}
-                  to={`/upcoming`}
-                  onClick={() => handleMenuItemClicked(2)}
+                  <Link
+                    className={activeMenu === 2 ? 'active' : ''}
+                    to={`/upcoming`}
+                    onClick={() => handleMenuItemClicked(2)}
+                  >
+                    UpComing
+                  </Link>
+                </li>
+                <li
+                  className={
+                    activeMenu === 3
+                      ? 'navigation-item active-menu'
+                      : 'navigation-item'
+                  }
                 >
-                  UpComing
-                </Link>
-              </li>
-              <li className="navigation-item">
-                <Link
-                  className={activeMenu === 3 ? 'active' : ''}
-                  to={`/history`}
-                  onClick={() => handleMenuItemClicked(3)}
+                  <Link
+                    className={activeMenu === 3 ? 'active' : ''}
+                    to={`/history`}
+                    onClick={() => handleMenuItemClicked(3)}
+                  >
+                    History
+                  </Link>
+                </li>
+              </div>
+              <div>
+                <li
+                  className={
+                    activeMenu === 4
+                      ? 'navigation-item active-menu'
+                      : 'navigation-item'
+                  }
                 >
-                  History
-                </Link>
-              </li>
-              <li className="navigation-item">
-                <Link
-                  className={activeMenu === 4 ? 'active' : ''}
-                  to={`/trigger1`}
-                  onClick={() => handleMenuItemClicked(4)}
+                  <Link
+                    className={activeMenu === 4 ? 'active' : ''}
+                    to={`/trigger1`}
+                    onClick={() => handleMenuItemClicked(4)}
+                  >
+                    Trigger1
+                  </Link>
+                  {newTrigger1 && <div className="green-dot"></div>}
+                </li>
+                <li
+                  className={
+                    activeMenu === 5
+                      ? 'navigation-item active-menu'
+                      : 'navigation-item'
+                  }
                 >
-                  Trigger1
-                </Link>
-                {newTrigger1 && <div className="green-dot"></div>}
-              </li>
-              <li className="navigation-item">
-                <Link
-                  className={activeMenu === 5 ? 'active' : ''}
-                  to={`/trigger2`}
-                  onClick={() => handleMenuItemClicked(5)}
+                  <Link
+                    className={activeMenu === 5 ? 'active' : ''}
+                    to={`/trigger2`}
+                    onClick={() => handleMenuItemClicked(5)}
+                  >
+                    Trigger2
+                  </Link>
+                  {newTrigger2 && <div className="green-dot"></div>}
+                </li>
+                <li
+                  className={
+                    activeMenu === 20
+                      ? 'navigation-item active-menu'
+                      : 'navigation-item'
+                  }
                 >
-                  Trigger2
-                </Link>
-                {newTrigger2 && <div className="green-dot"></div>}
-              </li>
-              <li className="navigation-item">
-                <Link
-                  className={activeMenu === 20 ? 'active' : ''}
-                  to={`/robots`}
-                  onClick={() => handleMenuItemClicked(20)}
-                >
-                  Robots
-                </Link>
-              </li>
+                  <Link
+                    className={activeMenu === 20 ? 'active' : ''}
+                    to={`/robots`}
+                    onClick={() => handleMenuItemClicked(20)}
+                  >
+                    Robots
+                  </Link>
+                </li>
+              </div>
             </ul>
             <div id="account">
               <ul className="navigation-menu float-right">
-                <li className="navigation-item">
+                <li
+                  className={
+                    activeMenu === 6
+                      ? 'navigation-item active-menu'
+                      : 'navigation-item'
+                  }
+                >
                   <Link
                     className={activeMenu === 6 ? 'active' : ''}
                     to={`/account-setting`}
@@ -309,7 +397,7 @@ const Header = (props) => {
                     <i className="far fa-star pr-1"></i>Premium Account
                   </a>
                 </li>
-                <span onClick={() => handleLogout()}>
+                <span onClick={handleLogout}>
                   <i className="fal fa-sign-out"></i>
                 </span>
               </ul>
@@ -324,6 +412,7 @@ const Header = (props) => {
 };
 
 Header.propTypes = {
+  setOpen: PropTypes.func,
   activeMenu: PropTypes.number,
   setActiveMenu: PropTypes.func,
   filterChanged: PropTypes.bool,
@@ -332,6 +421,8 @@ Header.propTypes = {
   setTrigger1DataBySet: PropTypes.func,
   trigger2DataBySet: PropTypes.object,
   setTrigger2DataBySet: PropTypes.func,
+  setPerformanceToday: PropTypes.func,
+  handleLogout: PropTypes.func,
 };
 
 export default Header;

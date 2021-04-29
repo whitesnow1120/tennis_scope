@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { css } from '@emotion/core';
-import BounceLoader from 'react-spinners/BounceLoader';
 import PropTypes from 'prop-types';
 
-import { filterByRankOdd, openedDetailExistInNewMathes } from '../utils';
+import { filterByRankOdd } from '../utils';
 import { getUpcomingData } from '../apis';
 import MatchItem from '../components/MatchItem';
 import {
@@ -16,9 +14,19 @@ import {
 import RankButtonGroup from '../components/RankButtonGroup';
 import CustomSlider from '../components/CustomSlider/slider';
 import CustomCheckbox from '../components/CustomCheckbox';
+import LoadingMatchList from '../components/LoadingMatchList';
+import PerformanceStatistics from '../components/PerformanceStatistics';
 
 const Upcoming = (props) => {
-  const { filterChanged, setFilterChanged, roboPicks, setRoboPicks } = props;
+  const {
+    filterChanged,
+    setFilterChanged,
+    roboPicks,
+    setRoboPicks,
+    performanceToday,
+    mobileMatchClicked,
+    setMobileMatchClicked,
+  } = props;
   const [openedDetail, setOpenedDetail] = useState({
     p1_id: '',
     p2_id: '',
@@ -27,6 +35,7 @@ const Upcoming = (props) => {
   const [upcomingFilteredData, setUpcomingFilteredData] = useState([]);
   const [winners, setWinners] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMatchList, setLoadingMatchList] = useState(false);
   const rankFilter = localStorage.getItem('rankFilter');
   const [activeRank, setActiveRank] = useState(
     rankFilter === null ? '1' : rankFilter
@@ -39,11 +48,6 @@ const Upcoming = (props) => {
   const defaultValues = sliderChanged === null ? SLIDER_RANGE : sliderChanged;
   const domain = SLIDER_RANGE;
   const [values, setValues] = useState(defaultValues.slice());
-  const override = css`
-    display: block;
-    margin: 0 auto;
-    border-color: red;
-  `;
 
   const handleSliderChange = (value) => {
     setOpenedDetail({
@@ -68,15 +72,10 @@ const Upcoming = (props) => {
         const filteredData = filterByRankOdd(data, activeRank, values);
         setUpcomingData(data);
         setUpcomingFilteredData(filteredData);
-        if (!openedDetailExistInNewMathes(filteredData, openedDetail)) {
-          setOpenedDetail({
-            p1_id: '',
-            p2_id: '',
-          });
-        }
       } else {
         setUpcomingData([]);
       }
+      setLoadingMatchList(false);
       // Call the async function again
       setTimeout(function () {
         const pathName = window.location.pathname;
@@ -86,6 +85,7 @@ const Upcoming = (props) => {
       }, 1000 * 60 * 5);
     };
 
+    setLoadingMatchList(true);
     loadUpcomingData();
   }, []);
 
@@ -105,14 +105,16 @@ const Upcoming = (props) => {
       </Helmet>
       {loading && (
         <div className="loading">
-          <div className="loader">
-            <BounceLoader loading={loading} css={override} size={100} />
-          </div>
+          <div className="loader"></div>
         </div>
       )}
-      <section className="section upcoming">
+      <section
+        className={`section upcoming ${
+          mobileMatchClicked ? 'hide-filter' : ''
+        } `}
+      >
         <div className="container-fluid">
-          <div className="row">
+          <div className="row header-filter-group">
             <RankButtonGroup
               activeRank={activeRank}
               setActiveRank={setActiveRank}
@@ -129,26 +131,36 @@ const Upcoming = (props) => {
               isChecked={roboPicks}
               setRoboPicks={setRoboPicks}
             />
+            <PerformanceStatistics statistics={performanceToday} />
           </div>
-          <div className="row mt-4">
-            {upcomingFilteredData.length > 0 ? (
-              upcomingFilteredData.map((item) => (
-                <MatchItem
-                  key={item.id}
-                  item={item}
-                  type="upcoming"
-                  loading={loading}
-                  setLoading={setLoading}
-                  openedDetail={openedDetail}
-                  setOpenedDetail={setOpenedDetail}
-                  winners={winners}
-                  roboPicks={roboPicks}
-                />
-              ))
-            ) : (
-              <></>
-            )}
-          </div>
+          {!loadingMatchList ? (
+            <div className="row matchlist-container">
+              {upcomingFilteredData.length > 0 ? (
+                upcomingFilteredData.map((item) => (
+                  <MatchItem
+                    key={item.event_id}
+                    item={item}
+                    type="upcoming"
+                    loading={loading}
+                    setLoading={setLoading}
+                    openedDetail={openedDetail}
+                    setOpenedDetail={setOpenedDetail}
+                    winners={winners}
+                    roboPicks={roboPicks}
+                    mobileMatchClicked={mobileMatchClicked}
+                    setMobileMatchClicked={setMobileMatchClicked}
+                    matchCnt={upcomingFilteredData.length}
+                  />
+                ))
+              ) : (
+                <></>
+              )}
+            </div>
+          ) : (
+            <div className="row matchlist-container">
+              <LoadingMatchList />
+            </div>
+          )}
         </div>
       </section>
     </>
@@ -160,6 +172,9 @@ Upcoming.propTypes = {
   setFilterChanged: PropTypes.func,
   roboPicks: PropTypes.bool,
   setRoboPicks: PropTypes.func,
+  performanceToday: PropTypes.object,
+  mobileMatchClicked: PropTypes.bool,
+  setMobileMatchClicked: PropTypes.func,
 };
 
 export default Upcoming;

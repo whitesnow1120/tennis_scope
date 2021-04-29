@@ -12,7 +12,7 @@ class UpdateInplayTable extends Command
      *
      * @var string
      */
-    protected $signature = 'update:inplay';
+    protected $signature = 'update:inplayscores';
 
     /**
      * The console command description.

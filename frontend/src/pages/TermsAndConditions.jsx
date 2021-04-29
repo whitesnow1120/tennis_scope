@@ -8,7 +8,7 @@ const TermsAndConditions = () => {
       <Hero title="Terms" />
       <div className="container pb-5 description">
         <div className="row">
-          <div className="col-12 text-center">
+          <div className="col-12 text-center sub-title">
             <h1>Terms and conditions</h1>
           </div>
           <div className="col-lg-12 col-md-12 col-sm-12 mt-4 padding-bottom">
@@ -38,7 +38,7 @@ const TermsAndConditions = () => {
               access or use of the site shall be deemed your conclusive
               acceptance of the modified agreement.
             </p>
-            <h4>SERVICES SUBSCRIPTION</h4>
+            <h4 className="services-subscription">SERVICES SUBSCRIPTION</h4>
             <p>PAYMENT METHOD, CANCELLATIONS AND PAYMENT FAILED</p>
             <p>
               By subscribing to the Service (Monthly or Yearly Plan) you agree

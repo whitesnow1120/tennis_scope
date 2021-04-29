@@ -13,7 +13,9 @@ const CustomDatePicker = (props) => {
   }
 
   const handleDateSelect = (date) => {
-    setHistoryDate(date.toString());
+    const d = date.toString();
+    localStorage.setItem('historyDate', d);
+    setHistoryDate(d);
   };
 
   const handleCalendarOpen = () => {

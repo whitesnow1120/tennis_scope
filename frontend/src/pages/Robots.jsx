@@ -31,18 +31,18 @@ const Robots = () => {
         <meta name="description" content={SITE_SEO_DESCRIPTION} />
         <meta property="og:description" content={SITE_SEO_DESCRIPTION} />
       </Helmet>
-      <section className="section history">
+      <section className="section robots">
         <div className="container-fluid">
-          {/* <div className="row mt-4">
+          <div className="row mt-4">
             <div className="col-12 trigger1">
               <div className="robot-rule">
-                <span>BRW BASED</span>
+                <span>BRW + GAH + ODD BASED (Ranked)</span>
               </div>
               <div className="trigger-border"></div>
             </div>
             {robotData.length > 0 ? (
               robotData[0].map((item, index) => (
-                <MatchRobotItem key={index} item={item} />
+                <MatchRobotItem key={index} item={item} robotType={43} />
               ))
             ) : (
               <></>
@@ -51,7 +51,7 @@ const Robots = () => {
           <div className="row mt-4">
             <div className="col-12 trigger1">
               <div className="robot-rule">
-                <span>BRL BASED</span>
+                <span>BRW + GAH + ODD + Balance BASED (Ranked)</span>
               </div>
               <div className="trigger-border"></div>
             </div>
@@ -66,7 +66,7 @@ const Robots = () => {
           <div className="row mt-4">
             <div className="col-12 trigger1">
               <div className="robot-rule">
-                <span>GAH BASED</span>
+                <span>Balance BASED (Ranked)</span>
               </div>
               <div className="trigger-border"></div>
             </div>
@@ -81,105 +81,13 @@ const Robots = () => {
           <div className="row mt-4">
             <div className="col-12 trigger1">
               <div className="robot-rule">
-                <span>BRW + GAH BASED</span>
+                <span>Balance BASED (UnRanked)</span>
               </div>
               <div className="trigger-border"></div>
             </div>
             {robotData.length > 0 ? (
               robotData[3].map((item, index) => (
                 <MatchRobotItem key={index} item={item} />
-              ))
-            ) : (
-              <></>
-            )}
-          </div>
-          <div className="row mt-4">
-            <div className="col-12 trigger1">
-              <div className="robot-rule">
-                <span>BRW + GAH + ODD (1.7 ~ 2) BASED (RANKED)</span>
-              </div>
-              <div className="trigger-border"></div>
-            </div>
-            {robotData.length > 0 ? (
-              robotData[4].map((item, index) => (
-                <MatchRobotItem key={index} item={item} robotType={41} />
-              ))
-            ) : (
-              <></>
-            )}
-          </div>
-          <div className="row mt-4">
-            <div className="col-12 trigger1">
-              <div className="robot-rule">
-                <span>BRW + GAH + ODD (1.7 ~ 2) BASED (Unranked)</span>
-              </div>
-              <div className="trigger-border"></div>
-            </div>
-            {robotData.length > 0 ? (
-              robotData[8].map((item, index) => (
-                <MatchRobotItem key={index} item={item} />
-              ))
-            ) : (
-              <></>
-            )}
-          </div>
-          <div className="row mt-4">
-            <div className="col-12 trigger1">
-              <div className="robot-rule">
-                <span>BRW + GAH + ODD (1.7 ~ 2) + RANK (Lower) BASED</span>
-              </div>
-              <div className="trigger-border"></div>
-            </div>
-            {robotData.length > 0 ? (
-              robotData[5].map((item, index) => (
-                <MatchRobotItem key={index} item={item} robotType={43} />
-              ))
-            ) : (
-              <></>
-            )}
-          </div>
-          <div className="row mt-4">
-            <div className="col-12 trigger1">
-              <div className="robot-rule">
-                <span>BRW + GAH + RANK (Higher) with ODD BASED</span>
-              </div>
-              <div className="trigger-border"></div>
-            </div>
-            {robotData.length > 0 ? (
-              robotData[6].map((item, index) => (
-                <MatchRobotItem key={index} item={item} />
-              ))
-            ) : (
-              <></>
-            )}
-          </div>
-          <div className="row mt-4"> 
-            <div className="col-12 trigger1">
-              <div className="robot-rule">
-                <span>
-                  BRW + GAH + RANK (Higher) with ODD BASED (Monday + Tuesday)
-                </span>
-              </div>
-              <div className="trigger-border"></div>
-            </div>
-            {robotData.length > 0 ? (
-              robotData[7].map((item, index) => (
-                <MatchRobotItem key={index} item={item} />
-              ))
-            ) : (
-              <></>
-            )}
-          </div>*/}
-          <div className="row mt-4">
-            <div className="col-12 trigger1">
-              <div className="robot-rule">
-                <span>BRW + GAH + ODD BASED</span>
-              </div>
-              <div className="trigger-border"></div>
-            </div>
-            {robotData.length > 0 ? (
-              robotData[0].map((item, index) => (
-                <MatchRobotItem key={index} item={item} robotType={43} />
               ))
             ) : (
               <></>

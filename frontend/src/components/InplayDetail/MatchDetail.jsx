@@ -14,6 +14,7 @@ const MatchDetail = (props) => {
   const [totalDepths, setTotalDepths] = useState(0);
   const [playerOdd, setPlayerOdd] = useState('-');
   const [tooltipContent, setToolTipContent] = useState('');
+  const [surface, setSurface] = useState('-');
 
   useEffect(() => {
     if (match != undefined) {
@@ -23,9 +24,10 @@ const MatchDetail = (props) => {
       const matchDate = formatDateTime(match.time);
       let content = `<div class='opponent-tooltip-content'><span>${matchDate[0]}</span>`;
       content += `<span>${match['o_name']}</span>`;
-      let surface = match['surface'] === null ? '-' : match['surface'];
+      let matchSurface = match['surface'] === null ? '-' : match['surface'];
       let odd = match['o_odd'] === null ? '-' : match['o_odd'];
-      content += `<span>${surface} ${odd}</span></div>`;
+      content += `<span>${matchSurface} ${odd}</span></div>`;
+      setSurface(matchSurface);
 
       setToolTipContent(content);
       const scoreClsName = 'match-sets-score';
@@ -88,12 +90,14 @@ const MatchDetail = (props) => {
             oRW={Math.round(match['oRW'])}
             oRL={Math.round(match['oRL'])}
             oGIR={match['oGIR']}
+            surface={surface}
           >
             <TooltipComponent
               className="tooltip-box"
               content={tooltipContent}
               tipPointerPosition="Start"
               target="#opponent_tooltip"
+              cssClass="custom-opponent-tooltip"
             >
               <div className="opponent-ranking">
                 <div id="opponent_tooltip">

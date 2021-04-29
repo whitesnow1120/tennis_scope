@@ -9,7 +9,7 @@ const Pricing = () => {
       <Hero title="Pricing" />
       <div className="container pb-5 description">
         <div className="row justify-content-center">
-          <div className="col-12 text-center">
+          <div className="col-12 text-center sub-title">
             <h1>Tenniscope pricing</h1>
           </div>
           <div className="col-12 mt-4 pay-with">
